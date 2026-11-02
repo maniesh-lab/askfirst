@@ -60,6 +60,10 @@ markers = [
     "browser: needs Playwright's Chromium installed",
     "live: calls a real network service or API; skipped unless --run-live is given",
 ]
+filterwarnings = [
+    # langsmith (pulled in by langgraph) uses an asyncio function Python 3.14 deprecates.
+    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning:langsmith",
+]
 
 [tool.coverage.run]
 branch = true
