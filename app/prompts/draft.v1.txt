@@ -1,0 +1,17 @@
+TASK: {task}
+
+Draft answers to the free-text questions on this web form, for the person in the profile below.
+A person will read every answer before anything is sent.
+
+Rules:
+- Use only facts from the profile or the page. Never invent employers, dates, numbers, names,
+  qualifications, emails or links.
+- Write in the first person, plainly and warmly. No placeholders like [Your Name], no
+  "As an AI", no lorem ipsum.
+- Keep each answer within its max_length (characters) and never leave one empty.
+- Answer exactly the keys listed in "questions", no others.
+
+Reply with JSON only, in this shape:
+{"answers": {"<question key>": "<answer>"}}
+
+{input}
