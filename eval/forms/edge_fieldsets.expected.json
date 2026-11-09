@@ -1,0 +1,35 @@
+{
+  "fixture": "edge_fieldsets",
+  "fields": [
+    {
+      "id": "ticket",
+      "label": "Ticket type",
+      "kind": "radio",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "meals",
+      "label": "Meals",
+      "kind": "checkbox_group",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "billing_street",
+      "label": "Street",
+      "kind": "text",
+      "required": false,
+      "mapping": "address.street"
+    },
+    {
+      "id": "billing_country",
+      "label": "Country",
+      "kind": "select",
+      "required": false,
+      "mapping": "address.country"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": "Book now"
+}

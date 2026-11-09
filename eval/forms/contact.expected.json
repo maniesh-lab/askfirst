@@ -1,0 +1,35 @@
+{
+  "fixture": "contact",
+  "fields": [
+    {
+      "id": "name",
+      "label": "Your name",
+      "kind": "text",
+      "required": false,
+      "mapping": "identity.full_name"
+    },
+    {
+      "id": "email",
+      "label": "Email address",
+      "kind": "email",
+      "required": false,
+      "mapping": "contact.email"
+    },
+    {
+      "id": "topic",
+      "label": "Topic",
+      "kind": "select",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "message",
+      "label": "How can we help?",
+      "kind": "textarea",
+      "required": false,
+      "mapping": "needs_draft"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": "Send message"
+}

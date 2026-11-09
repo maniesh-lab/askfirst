@@ -1,0 +1,42 @@
+{
+  "fixture": "survey",
+  "fields": [
+    {
+      "id": "How happy are you with your current tools?",
+      "label": "How happy are you with your current tools?",
+      "kind": "aria_radio",
+      "required": true,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "What is your role?",
+      "label": "What is your role?",
+      "kind": "combobox",
+      "required": true,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "Which tools do you use every day?",
+      "label": "Which tools do you use every day?",
+      "kind": "aria_checkbox_group",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "How did you hear about this survey?",
+      "label": "How did you hear about this survey?",
+      "kind": "contenteditable",
+      "required": false,
+      "mapping": "canned"
+    },
+    {
+      "id": "What would make your tools better?",
+      "label": "What would make your tools better?",
+      "kind": "contenteditable",
+      "required": false,
+      "mapping": "needs_draft"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": "Submit"
+}

@@ -1,0 +1,42 @@
+{
+  "fixture": "edge_dates",
+  "fields": [
+    {
+      "id": "dob",
+      "label": "Date of birth",
+      "kind": "date",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "arrival",
+      "label": "Arrival",
+      "kind": "datetime-local",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "travel_month",
+      "label": "Month of travel",
+      "kind": "month",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "visit_time",
+      "label": "Preferred time",
+      "kind": "time",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "start_text",
+      "label": "Start date (YYYY-MM-DD)",
+      "kind": "text",
+      "required": false,
+      "mapping": "work.earliest_start"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": "Confirm booking"
+}

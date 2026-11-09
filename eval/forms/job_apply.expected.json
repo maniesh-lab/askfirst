@@ -1,0 +1,96 @@
+{
+  "fixture": "job_apply",
+  "fields": [
+    {
+      "id": "full_name",
+      "label": "Full name",
+      "kind": "text",
+      "required": true,
+      "mapping": "identity.full_name"
+    },
+    {
+      "id": "email",
+      "label": "Email",
+      "kind": "email",
+      "required": true,
+      "mapping": "contact.email"
+    },
+    {
+      "id": "phone",
+      "label": "Phone",
+      "kind": "tel",
+      "required": true,
+      "mapping": "contact.phone"
+    },
+    {
+      "id": "location",
+      "label": "Location",
+      "kind": "select",
+      "required": true,
+      "mapping": "address.city"
+    },
+    {
+      "id": "linkedin",
+      "label": "LinkedIn profile URL",
+      "kind": "url",
+      "required": false,
+      "mapping": "links.linkedin"
+    },
+    {
+      "id": "years_experience",
+      "label": "Years of experience",
+      "kind": "number",
+      "required": false,
+      "mapping": "work.years_experience"
+    },
+    {
+      "id": "work_authorization",
+      "label": "Are you allowed to work in Nepal?",
+      "kind": "radio",
+      "required": true,
+      "mapping": "work.authorization"
+    },
+    {
+      "id": "start_date",
+      "label": "Earliest start date",
+      "kind": "date",
+      "required": false,
+      "mapping": "work.earliest_start"
+    },
+    {
+      "id": "why_role",
+      "label": "Why do you want this role?",
+      "kind": "textarea",
+      "required": true,
+      "mapping": "needs_draft"
+    },
+    {
+      "id": "cover_letter",
+      "label": "Cover letter",
+      "kind": "textarea",
+      "required": false,
+      "mapping": "needs_draft"
+    },
+    {
+      "id": "resume",
+      "label": "Resume (PDF)",
+      "kind": "file",
+      "required": false,
+      "mapping": "files.resume"
+    },
+    {
+      "id": "consent",
+      "label": "I agree that Practice Co. may store this application",
+      "kind": "checkbox",
+      "required": true,
+      "mapping": "canned"
+    }
+  ],
+  "must_skip": [
+    "website"
+  ],
+  "submit_button": "Submit application",
+  "overrides": {
+    "location": "address.city"
+  }
+}

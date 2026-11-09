@@ -1,0 +1,21 @@
+{
+  "fixture": "edge_disabled_readonly",
+  "fields": [
+    {
+      "id": "display_name",
+      "label": "Display name",
+      "kind": "text",
+      "required": false,
+      "mapping": "identity.full_name"
+    }
+  ],
+  "must_skip": [
+    "account",
+    "plan",
+    "old_field",
+    "zero_size",
+    "fax",
+    "aria_hidden_field"
+  ],
+  "submit_button": "Save changes"
+}

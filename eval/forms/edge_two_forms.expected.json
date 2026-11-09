@@ -1,0 +1,35 @@
+{
+  "fixture": "edge_two_forms",
+  "fields": [
+    {
+      "id": "name",
+      "label": "Your name",
+      "kind": "text",
+      "required": true,
+      "mapping": "identity.full_name"
+    },
+    {
+      "id": "email",
+      "label": "Email",
+      "kind": "email",
+      "required": true,
+      "mapping": "contact.email"
+    },
+    {
+      "id": "phone",
+      "label": "Phone",
+      "kind": "tel",
+      "required": false,
+      "mapping": "contact.phone"
+    },
+    {
+      "id": "details",
+      "label": "Tell us about your project",
+      "kind": "textarea",
+      "required": false,
+      "mapping": "needs_draft"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": "Request quote"
+}

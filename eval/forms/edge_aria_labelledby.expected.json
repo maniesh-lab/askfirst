@@ -1,0 +1,49 @@
+{
+  "fixture": "edge_aria_labelledby",
+  "fields": [
+    {
+      "id": "fname",
+      "label": "First name",
+      "kind": "text",
+      "required": true,
+      "mapping": "identity.first_name"
+    },
+    {
+      "id": "lname",
+      "label": "Last name",
+      "kind": "text",
+      "required": false,
+      "mapping": "identity.last_name"
+    },
+    {
+      "id": "city",
+      "label": "City (where you live now)",
+      "kind": "text",
+      "required": false,
+      "mapping": "address.city"
+    },
+    {
+      "id": "nickname",
+      "label": "Nickname",
+      "kind": "text",
+      "required": false,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "zip",
+      "label": "Postal code",
+      "kind": "text",
+      "required": true,
+      "mapping": "address.postal_code"
+    },
+    {
+      "id": "contact_email",
+      "label": "Email address",
+      "kind": "email",
+      "required": true,
+      "mapping": "contact.email"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": "Sign up"
+}

@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-08",
+  "metrics": {
+    "field_recall": 1.0,
+    "field_precision": 1.0,
+    "label_exact": 1.0,
+    "kind_accuracy": 1.0,
+    "required_accuracy": 1.0,
+    "mapping_accuracy": 1.0,
+    "hidden_skipped": 1.0,
+    "submit_found": 1.0
+  },
+  "misses": []
+}

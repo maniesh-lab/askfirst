@@ -1,0 +1,59 @@
+# Site profile for our own practice site. Deterministic choices the agent must not guess.
+# base_url here is the default; PRACTICE_BASE_URL overrides it (see app/browser/sites.py).
+name: practice
+base_url: http://127.0.0.1:8800
+base_url_setting: practice_base_url
+# Hosts this site runs on. Each must also be in ALLOWED_HOSTS (a profile never widens it).
+allowed_hosts: [127.0.0.1, localhost, practice-site]
+
+forms:
+  job_apply:
+    path: /jobs/apply
+    submit_button: Submit application
+    success:
+      url_contains: /jobs/apply/success
+      text: confirmation ID
+    overrides:
+      location: address.city
+
+  marketplace:
+    path: /listings/new
+    login:
+      url: /login
+      email_field: Email
+      password_field: Password
+      submit_button: Log in
+      email_setting: practice_seller_email
+      password_setting: practice_seller_password
+    steps: [Next, Continue, Review listing]
+    submit_button: Publish listing
+    success:
+      url_contains: /listings/done
+      text: Listing published
+    # Columns in config/products.example.csv -> field keys on the listing form.
+    data_columns:
+      title: listing_title
+      category: category
+      condition: condition
+      price: price
+      currency: currency
+      quantity: quantity
+      shipping: shipping_options
+      description: description
+      photos: photos
+
+  contact:
+    path: /contact
+    submit_button: Send message
+    success:
+      url_contains: /contact/thanks
+      text: confirmation ID
+    overrides:
+      your_name: identity.full_name
+
+  survey:
+    path: /survey
+    submit_button: Submit
+    success:
+      url_contains: /survey/thanks
+      text: confirmation ID

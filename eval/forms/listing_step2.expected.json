@@ -1,0 +1,46 @@
+{
+  "fixture": "listing_step2",
+  "fields": [
+    {
+      "id": "price",
+      "label": "Price",
+      "kind": "number",
+      "required": true,
+      "mapping": "price"
+    },
+    {
+      "id": "currency",
+      "label": "Currency",
+      "kind": "select",
+      "required": true,
+      "mapping": "currency"
+    },
+    {
+      "id": "quantity",
+      "label": "Quantity",
+      "kind": "number",
+      "required": true,
+      "mapping": "quantity"
+    },
+    {
+      "id": "shipping",
+      "label": "Shipping options",
+      "kind": "checkbox_group",
+      "required": false,
+      "mapping": "shipping_options"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": null,
+  "data": {
+    "listing_title": "Practice desk lamp",
+    "category": "furniture",
+    "condition": "like_new",
+    "price": "1800",
+    "currency": "NPR",
+    "quantity": "1",
+    "shipping_options": "pickup;courier",
+    "description": "A small adjustable desk lamp.",
+    "photos": "profiles/files/product.png"
+  }
+}

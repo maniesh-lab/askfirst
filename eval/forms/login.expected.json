@@ -1,0 +1,21 @@
+{
+  "fixture": "login",
+  "fields": [
+    {
+      "id": "email",
+      "label": "Email",
+      "kind": "email",
+      "required": true,
+      "mapping": "contact.email"
+    },
+    {
+      "id": "password",
+      "label": "Password",
+      "kind": "password",
+      "required": true,
+      "mapping": "needs_human"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": "Log in"
+}

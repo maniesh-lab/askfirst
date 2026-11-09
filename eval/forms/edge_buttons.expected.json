@@ -1,0 +1,21 @@
+{
+  "fixture": "edge_buttons",
+  "fields": [
+    {
+      "id": "title",
+      "label": "Title",
+      "kind": "text",
+      "required": true,
+      "mapping": "needs_human"
+    },
+    {
+      "id": "body",
+      "label": "Body",
+      "kind": "textarea",
+      "required": false,
+      "mapping": "needs_draft"
+    }
+  ],
+  "must_skip": [],
+  "submit_button": "Publish post"
+}

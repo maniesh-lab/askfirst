@@ -1,0 +1,23 @@
+{
+  "fixture": "edge_conditional",
+  "fields": [
+    {
+      "id": "email",
+      "label": "Email",
+      "kind": "email",
+      "required": true,
+      "mapping": "contact.email"
+    },
+    {
+      "id": "has_referrer",
+      "label": "Someone referred me",
+      "kind": "checkbox",
+      "required": false,
+      "mapping": "needs_human"
+    }
+  ],
+  "must_skip": [
+    "referrer_email"
+  ],
+  "submit_button": "Subscribe"
+}
