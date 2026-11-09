@@ -1,0 +1,157 @@
+# 30 made-up issues for a made-up notes app, used two ways:
+# - scripts/seed_sandbox.py creates them in the sandbox repo (maniesh-lab/askfirst-sandbox)
+# - tests turn them into FakeGitHub issues (age_days sets created/updated dates offline;
+#   the real API can't backdate, so stale behaviour is only tested offline)
+# Gold answers live in eval/triage/gold.yaml, never in the issues themselves.
+issues:
+  - number: 1
+    title: App crashes when saving a note with an emoji in the title
+    age_days: 2
+    body: |
+      Steps to reproduce:
+      1. Create a new note
+      2. Put 🎉 in the title
+      3. Press save
+      Expected: the note saves.
+      Actual: the app closes with an error "UnicodeEncodeError".
+  - number: 2
+    title: Login fails for every user since this morning's release
+    age_days: 1
+    body: |
+      Steps to reproduce: 1. open the app 2. log in with any account.
+      Expected: you are logged in.
+      Actual: "500 Internal Server Error" for all users, nobody can log in.
+  - number: 3
+    title: Search is broken
+    age_days: 3
+    body: Search doesn't work anymore. Please fix.
+  - number: 4
+    title: Add dark mode
+    age_days: 5
+    body: It would be nice to have a dark mode option for night-time writing.
+  - number: 5
+    title: How do I export all my notes?
+    age_days: 4
+    body: Is there a way to export every note at once? I could only find export for one note.
+  - number: 6
+    title: Typo in the settings page
+    age_days: 6
+    body: The settings page says "Notifcations" instead of "Notifications".
+  - number: 7
+    title: API key exposed in the browser console logs
+    age_days: 1
+    body: |
+      When I open the web app, the full API key is printed in the console on every page load.
+      Anyone with access to the browser can read it. This looks like a token leak.
+  - number: 8
+    title: Bump the markdown library to the latest version
+    age_days: 7
+    body: Our markdown dependency is two major versions behind. Upgrade it and run the tests.
+  - number: 9
+    title: Export to CSV crashes for large notebooks
+    age_days: 2
+    body: |
+      Steps to reproduce:
+      1. Open a notebook with more than 5000 notes
+      2. Click Export, choose CSV
+      Expected: a CSV file downloads.
+      Actual: the page freezes, then "out of memory" error.
+  - number: 10
+    title: CSV export crashes on big notebooks
+    age_days: 1
+    body: |
+      To reproduce: open a notebook with thousands of notes, export as CSV.
+      Expected: file downloads. Actual: crash with an out of memory error.
+  - number: 11
+    title: Support for tags on notes
+    age_days: 9
+    body: Please add tags so I can group notes across notebooks.
+  - number: 12
+    title: Allow tagging notes
+    age_days: 3
+    body: Feature request - let me add tags to notes and filter by tag across notebooks.
+  - number: 13
+    title: The README install steps are out of date
+    age_days: 8
+    body: The README still says to run setup.py, but the project uses pyproject now.
+  - number: 14
+    title: Sync sometimes duplicates notes
+    age_days: 10
+    body: Sometimes after syncing I see the same note twice. Not sure when it happens.
+  - number: 15
+    title: Is it possible to share a notebook read-only?
+    age_days: 5
+    body: I'd like to share a notebook with a friend without letting them edit. Is that possible?
+  - number: 16
+    title: Refactor the storage layer to remove duplicated code
+    age_days: 12
+    body: storage/local.py and storage/remote.py repeat the same retry logic. Pull it into one helper.
+  - number: 17
+    title: Webhooks stopped firing after the last update
+    age_days: 2
+    body: |
+      Steps to reproduce: create a webhook for "note created", then create a note.
+      Expected: the webhook URL receives a POST.
+      Actual: nothing arrives, and the webhook log is empty for all our integrations.
+  - number: 18
+    title: Add keyboard shortcut to create a new note
+    age_days: 15
+    body: A shortcut like Ctrl+N for a new note would save time.
+  - number: 19
+    title: Date picker ignores my locale
+    age_days: 6
+    body: |
+      Steps: set the language to German, open a reminder.
+      Expected: dates as DD.MM.YYYY. Actual: dates shown as MM/DD/YYYY.
+      Workaround: typing the date by hand works.
+  - number: 20
+    title: Documentation for the webhook payload is missing
+    age_days: 11
+    body: The docs mention webhooks but never show what the JSON payload looks like.
+  - number: 21
+    title: Possible XSS in shared note previews
+    age_days: 1
+    body: |
+      A note title like <img src=x onerror=alert(1)> runs script when someone opens the shared preview.
+  - number: 22
+    title: Images do not load
+    age_days: 4
+    body: Images in my notes are not loading. It was fine last week.
+  - number: 23
+    title: Feature idea - pin notes to the top
+    age_days: 20
+    body: Let me pin important notes so they stay at the top of the list.
+  - number: 24
+    title: CI is slow, cache the dependencies
+    age_days: 14
+    body: Each CI run reinstalls everything and takes 9 minutes. Cache pip downloads in the workflow.
+  - number: 25
+    title: How can I change the default font?
+    age_days: 3
+    body: Where do I change the font used in the editor?
+  - number: 26
+    title: Old request - offline mode
+    age_days: 45
+    body: It would be great if the app worked offline and synced later.
+  - number: 27
+    title: Attachment upload fails over 10 MB
+    age_days: 40
+    body: |
+      Steps to reproduce: attach a 12 MB PDF to a note.
+      Expected: it uploads. Actual: "413 Payload Too Large" error.
+    labels: ["type:bug", "priority:P2", "triaged"]
+  - number: 28
+    title: Spelling mistakes in the onboarding guide
+    age_days: 5
+    body: The onboarding guide has several typos, for example "recieve" and "seperate".
+    labels: ["type:docs"]
+  - number: 29
+    title: Note list scrolls back to the top after editing
+    age_days: 2
+    body: |
+      Steps to reproduce: scroll down the note list, open a note, edit it, go back.
+      Expected: the list stays where I was. Actual: it jumps back to the top every time.
+  - number: 30
+    title: Question about the free plan limits
+    age_days: 6
+    body: How many notebooks can I have on the free plan?

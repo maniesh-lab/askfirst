@@ -1,0 +1,20 @@
+TASK: {task}
+
+You triage GitHub issues using the rubric below. For every issue in "issues", decide:
+- category: one of the rubric's categories
+- priority: P0, P1, P2 or P3, using the rubric's meanings and examples
+- labels: only labels the rubric allows ("type:<category>", "priority:<P>", "area:<area>",
+  "needs-info", "possible-duplicate")
+- needs_info: true if a bug report lacks steps to reproduce, expected or actual behaviour;
+  "missing" lists which ("steps", "expected", "actual")
+- duplicate_of: the number of an issue from that issue's "duplicate_candidates" if it is clearly
+  the same problem, else null. Never name an issue that is not in its candidate list.
+- summary: one plain sentence, at most 160 characters
+- rationale: at most 300 characters, and it must quote a short phrase from the issue in double
+  quotes, copied exactly, e.g. The report says "crashes on save".
+
+Reply with JSON only, in this shape, one entry per issue, same numbers:
+{"results": [{"number": 1, "category": "bug", "priority": "P2", "labels": ["type:bug", "priority:P2"],
+  "needs_info": false, "missing": [], "duplicate_of": null, "summary": "...", "rationale": "..."}]}
+
+{input}

@@ -1,0 +1,35 @@
+# Gold triage answers for tests/fixtures/sandbox_issues.yaml, written by hand.
+# category, priority, needs_info, duplicate_of (an older issue number or null).
+# Issue 27 is already triaged and unchanged, so the bot should skip it (skip: true). The eval
+# passes a last-run time for that; on a first live run there is none, so it gets classified.
+gold:
+  1: {category: bug, priority: P2, needs_info: false, duplicate_of: null}
+  2: {category: bug, priority: P0, needs_info: false, duplicate_of: null}
+  3: {category: bug, priority: P2, needs_info: true, duplicate_of: null}
+  4: {category: feature, priority: P2, needs_info: false, duplicate_of: null}
+  5: {category: question, priority: P3, needs_info: false, duplicate_of: null}
+  6: {category: docs, priority: P3, needs_info: false, duplicate_of: null}
+  7: {category: security, priority: P0, needs_info: false, duplicate_of: null}
+  8: {category: chore, priority: P3, needs_info: false, duplicate_of: null}
+  9: {category: bug, priority: P1, needs_info: false, duplicate_of: null}
+  10: {category: bug, priority: P1, needs_info: false, duplicate_of: 9}
+  11: {category: feature, priority: P2, needs_info: false, duplicate_of: null}
+  12: {category: feature, priority: P2, needs_info: false, duplicate_of: 11}
+  13: {category: docs, priority: P3, needs_info: false, duplicate_of: null}
+  14: {category: bug, priority: P2, needs_info: true, duplicate_of: null}
+  15: {category: question, priority: P3, needs_info: false, duplicate_of: null}
+  16: {category: chore, priority: P3, needs_info: false, duplicate_of: null}
+  17: {category: bug, priority: P1, needs_info: false, duplicate_of: null}
+  18: {category: feature, priority: P3, needs_info: false, duplicate_of: null}
+  19: {category: bug, priority: P2, needs_info: false, duplicate_of: null}
+  20: {category: docs, priority: P3, needs_info: false, duplicate_of: null}
+  21: {category: security, priority: P0, needs_info: false, duplicate_of: null}
+  22: {category: bug, priority: P2, needs_info: true, duplicate_of: null}
+  23: {category: feature, priority: P3, needs_info: false, duplicate_of: null}
+  24: {category: chore, priority: P3, needs_info: false, duplicate_of: null}
+  25: {category: question, priority: P3, needs_info: false, duplicate_of: null}
+  26: {category: feature, priority: P3, needs_info: false, duplicate_of: null}
+  27: {skip: true}
+  28: {category: docs, priority: P3, needs_info: false, duplicate_of: null}
+  29: {category: bug, priority: P2, needs_info: false, duplicate_of: null}
+  30: {category: question, priority: P3, needs_info: false, duplicate_of: null}

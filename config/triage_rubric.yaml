@@ -1,0 +1,86 @@
+# The triage rubric: what the bot may decide, and the rules that beat the LLM.
+version: 1
+
+categories:
+  bug: Something that used to work, or should work, is broken.
+  feature: A request for new behaviour.
+  question: Someone asking how to do something; nothing is broken.
+  docs: Missing, wrong or unclear documentation.
+  chore: Maintenance work (dependencies, CI, refactors) with no user-facing change.
+  security: A possible vulnerability or leaked secret. Always P0 and escalated.
+
+priorities:
+  P0:
+    meaning: Security problem, data loss, or the main feature down for everyone. Drop everything.
+    examples: ["Leaked API token in the logs", "Every login fails since the last release"]
+  P1:
+    meaning: A major feature broken for many users, no workaround.
+    examples: ["Exports crash for files over 10 MB", "Webhooks stopped firing"]
+  P2:
+    meaning: A real problem with a workaround, or a feature most users would want.
+    examples: ["Date picker ignores the locale", "Add dark mode"]
+  P3:
+    meaning: Small, cosmetic, a question, or a nice-to-have.
+    examples: ["Typo in the settings page", "How do I change my avatar?"]
+
+# The only labels the bot may ever apply (exact names, or a prefix ending in "*").
+label_allowlist:
+  - "type:*"
+  - "priority:P0"
+  - "priority:P1"
+  - "priority:P2"
+  - "priority:P3"
+  - needs-info
+  - possible-duplicate
+  - "area:*"
+  - triaged
+  - stale
+
+areas: [ui, api, auth, docs, build, data]
+
+# Colours for labels the bot creates in the target repo.
+label_colors:
+  "type:bug": d73a4a
+  "type:feature": a2eeef
+  "type:question": d876e3
+  "type:docs": 0075ca
+  "type:chore": c5def5
+  "type:security": b60205
+  "priority:P0": b60205
+  "priority:P1": d93f0b
+  "priority:P2": fbca04
+  "priority:P3": 0e8a16
+  needs-info: fef2c0
+  possible-duplicate: cfd3d7
+  triaged: 5319e7
+  stale: ededed
+  triage-log: bfdadc
+
+stale_after_days: 30
+
+rules:
+  # Any of these words makes an issue security + P0 + escalated, whatever the LLM says.
+  security_words:
+    - vulnerability
+    - vulnerable
+    - cve
+    - exploit
+    - xss
+    - csrf
+    - sql injection
+    - rce
+    - remote code execution
+    - token leak
+    - leaked token
+    - leaked key
+    - api key exposed
+    - secret exposed
+    - credentials exposed
+    - privilege escalation
+    - auth bypass
+  # A bug report needs these; any missing one gets `needs-info`.
+  bug_needs:
+    steps: ["steps to reproduce", "to reproduce", "steps:", "repro", "1."]
+    expected: ["expected", "should"]
+    actual: ["actual", "instead", "but it", "error", "crash", "fails"]
+  bug_words: [bug, broken, crash, error, fails, exception, "doesn't work", "not working", regression]
