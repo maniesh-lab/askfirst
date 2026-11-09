@@ -1,0 +1,92 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Tools survey</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="banner" role="note">Practice forms for automation testing. Not a real job board or marketplace.</div>
+  <header class="top">
+    <a href="/" class="brand">Practice forms</a>
+    <nav>
+      <a href="/jobs/apply">Job application</a>
+      <a href="/listings/new">Marketplace</a>
+      <a href="/contact">Contact</a>
+      <a href="/survey">Survey</a>
+      <a href="/submissions">Submissions</a>
+    </nav>
+    <form class="search" action="/" method="get" role="search">
+      <input type="search" name="q" aria-label="Search the site" placeholder="Search">
+      <button type="submit">Search</button>
+    </form>
+  </header>
+  <main>
+    
+<h1>Tools survey</h1>
+<p>Three quick questions about the tools you use at work.</p>
+
+<form id="survey" action="/survey" method="post">
+  <div class="question">
+    <div id="q-satisfaction" class="q-title">How happy are you with your current tools? *</div>
+    <div role="radiogroup" aria-labelledby="q-satisfaction" aria-required="true" data-target="satisfaction">
+      
+      <div role="radio" tabindex="0" aria-checked="false" data-value="1">1</div>
+      
+      <div role="radio" tabindex="-1" aria-checked="false" data-value="2">2</div>
+      
+      <div role="radio" tabindex="-1" aria-checked="false" data-value="3">3</div>
+      
+      <div role="radio" tabindex="-1" aria-checked="false" data-value="4">4</div>
+      
+      <div role="radio" tabindex="-1" aria-checked="false" data-value="5">5</div>
+      
+    </div>
+    <input type="hidden" name="satisfaction" value="">
+  </div>
+
+  <div class="question">
+    <div id="q-role" class="q-title">What is your role? *</div>
+    <div class="combo">
+      <input role="combobox" aria-labelledby="q-role" aria-expanded="false" aria-controls="role-list" aria-autocomplete="list" aria-required="true" type="text" autocomplete="off">
+      <ul id="role-list" role="listbox" hidden="">
+        <li role="option" aria-selected="false" data-value="Developer">Developer</li><li role="option" aria-selected="false" data-value="Designer">Designer</li><li role="option" aria-selected="false" data-value="Manager">Manager</li><li role="option" aria-selected="false" data-value="Student">Student</li><li role="option" aria-selected="false" data-value="Other">Other</li>
+      </ul>
+    </div>
+    <input type="hidden" name="role" value="">
+  </div>
+
+  <div class="question">
+    <div id="q-tools" class="q-title">Which tools do you use every day?</div>
+    <div class="checks" aria-labelledby="q-tools" role="group">
+      
+      <div role="checkbox" tabindex="0" aria-checked="false" data-value="Spreadsheets">Spreadsheets</div>
+      
+      <div role="checkbox" tabindex="0" aria-checked="false" data-value="Email">Email</div>
+      
+      <div role="checkbox" tabindex="0" aria-checked="false" data-value="Chat apps">Chat apps</div>
+      
+      <div role="checkbox" tabindex="0" aria-checked="false" data-value="Project boards">Project boards</div>
+      
+    </div>
+    <div id="tools-inputs"></div>
+  </div>
+
+  <div class="question">
+    <div id="q-hear" class="q-title">How did you hear about this survey?</div>
+    <div role="textbox" aria-labelledby="q-hear" contenteditable="true" class="editable" data-target="heard_from"></div>
+    <input type="hidden" name="heard_from" value="">
+  </div>
+
+  <div class="question">
+    <div id="q-feedback" class="q-title">What would make your tools better?</div>
+    <div role="textbox" aria-multiline="true" aria-labelledby="q-feedback" contenteditable="true" class="editable" data-target="feedback" data-maxlength="800"></div>
+    <input type="hidden" name="feedback" value="">
+  </div>
+  <button type="submit">Submit</button>
+</form>
+<script src="/static/survey.js"></script>
+
+  </main>
+
+</body></html>

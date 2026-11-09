@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Edge: disabled, readonly and hidden fields</title>
+<style>.gone { display: none; } .tiny { width: 0; height: 0; padding: 0; border: 0; } .away { position: absolute; left: -9999px; }</style>
+</head>
+<body>
+<h1>Update your details</h1>
+<form id="details" action="/details" method="post">
+  <input type="hidden" name="session_token" value="abc123">
+  <label for="acct">Account number</label>
+  <input id="acct" name="account" type="text" value="ACC-0001" readonly>
+  <label for="plan">Plan</label>
+  <input id="plan" name="plan" type="text" value="Basic" disabled>
+  <label for="nm">Display name</label>
+  <input id="nm" name="display_name" type="text">
+  <div class="gone"><label for="old">Old field</label><input id="old" name="old_field" type="text"></div>
+  <input name="zero_size" class="tiny" type="text" aria-label="Zero size">
+  <div class="away"><label for="fax">Fax number</label><input id="fax" name="fax" type="text" tabindex="-1" autocomplete="off"></div>
+  <div aria-hidden="true"><label for="ah">Hidden from screen readers</label><input id="ah" name="aria_hidden_field" type="text"></div>
+  <button type="submit">Save changes</button>
+</form>
+</body></html>

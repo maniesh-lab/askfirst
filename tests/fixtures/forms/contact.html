@@ -1,0 +1,43 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Contact us</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="banner" role="note">Practice forms for automation testing. Not a real job board or marketplace.</div>
+  <header class="top">
+    <a href="/" class="brand">Practice forms</a>
+    <nav>
+      <a href="/jobs/apply">Job application</a>
+      <a href="/listings/new">Marketplace</a>
+      <a href="/contact">Contact</a>
+      <a href="/survey">Survey</a>
+      <a href="/submissions">Submissions</a>
+    </nav>
+    <form class="search" action="/" method="get" role="search">
+      <input type="search" name="q" aria-label="Search the site" placeholder="Search">
+      <button type="submit">Search</button>
+    </form>
+  </header>
+  <main>
+    
+<h1>Contact us</h1>
+<p>Questions about the practice site? Send us a note.</p>
+
+<form id="contact" action="/contact" method="post">
+  <div class="field"><input name="name" type="text" placeholder="Your name" value=""></div>
+  <div class="field"><input name="email" type="email" aria-label="Email address" placeholder="you@example.com" value=""></div>
+  <div class="field">
+    <select name="topic" aria-label="Topic">
+      <option>General question</option><option>Order problem</option><option>Partnership</option>
+    </select>
+  </div>
+  <div class="field"><textarea name="message" rows="5" maxlength="1000" placeholder="How can we help?"></textarea></div>
+  <button>Send message</button>
+</form>
+
+  </main>
+
+</body></html>

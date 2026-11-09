@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Practice forms{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="banner" role="note">Practice forms for automation testing. Not a real job board or marketplace.</div>
+  <header class="top">
+    <a href="/" class="brand">Practice forms</a>
+    <nav>
+      <a href="/jobs/apply">Job application</a>
+      <a href="/listings/new">Marketplace</a>
+      <a href="/contact">Contact</a>
+      <a href="/survey">Survey</a>
+      <a href="/submissions">Submissions</a>
+    </nav>
+    <form class="search" action="/" method="get" role="search">
+      <input type="search" name="q" aria-label="Search the site" placeholder="Search">
+      <button type="submit">Search</button>
+    </form>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Edge: fieldset and legend groups</title></head>
+<body>
+<h1>Event booking</h1>
+<form id="booking" action="/book" method="post">
+  <fieldset>
+    <legend>Ticket type</legend>
+    <label><input type="radio" name="ticket" value="standard"> Standard</label>
+    <label><input type="radio" name="ticket" value="student"> Student</label>
+    <label><input type="radio" name="ticket" value="vip"> VIP</label>
+  </fieldset>
+  <fieldset>
+    <legend>Meals</legend>
+    <label><input type="checkbox" name="meals" value="lunch"> Lunch</label>
+    <label><input type="checkbox" name="meals" value="dinner"> Dinner</label>
+  </fieldset>
+  <fieldset>
+    <legend>Billing address</legend>
+    <label for="b-street">Street</label><input id="b-street" name="billing_street" type="text">
+    <label for="b-country">Country</label>
+    <select id="b-country" name="billing_country">
+      <option value="">Select</option>
+      <option value="NP">Nepal</option>
+      <option value="IN">India</option>
+      <option value="BD">Bangladesh</option>
+    </select>
+  </fieldset>
+  <button type="submit">Book now</button>
+</form>
+</body></html>

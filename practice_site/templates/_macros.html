@@ -1,0 +1,3 @@
+{% macro err(errors, name) -%}
+  {% if errors.get(name) %}<p class="error" id="{{ name }}-error">{{ errors[name] }}</p>{% endif %}
+{%- endmacro %}

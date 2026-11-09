@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Tools survey{% endblock %}
+{% block content %}
+<h1>Tools survey</h1>
+<p>Three quick questions about the tools you use at work.</p>
+{% if errors %}<div class="error-summary" role="alert">{% for k, v in errors.items() %}<p class="error">{{ v }}</p>{% endfor %}</div>{% endif %}
+<form id="survey" action="/survey" method="post">
+  <div class="question">
+    <div id="q-satisfaction" class="q-title">How happy are you with your current tools? *</div>
+    <div role="radiogroup" aria-labelledby="q-satisfaction" aria-required="true" data-target="satisfaction">
+      {% for n in range(1, 6) %}
+      <div role="radio" tabindex="{{ 0 if n == 1 else -1 }}" aria-checked="false" data-value="{{ n }}">{{ n }}</div>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="satisfaction" value="">
+  </div>
+
+  <div class="question">
+    <div id="q-role" class="q-title">What is your role? *</div>
+    <div class="combo">
+      <input role="combobox" aria-labelledby="q-role" aria-expanded="false" aria-controls="role-list" aria-autocomplete="list" aria-required="true" type="text" autocomplete="off">
+      <ul id="role-list" role="listbox" hidden>
+        {% for r in forms.SURVEY_ROLES %}<li role="option" aria-selected="false" data-value="{{ r }}">{{ r }}</li>{% endfor %}
+      </ul>
+    </div>
+    <input type="hidden" name="role" value="">
+  </div>
+
+  <div class="question">
+    <div id="q-tools" class="q-title">Which tools do you use every day?</div>
+    <div class="checks" aria-labelledby="q-tools" role="group">
+      {% for t in forms.SURVEY_TOOLS %}
+      <div role="checkbox" tabindex="0" aria-checked="false" data-value="{{ t }}">{{ t }}</div>
+      {% endfor %}
+    </div>
+    <div id="tools-inputs"></div>
+  </div>
+
+  <div class="question">
+    <div id="q-hear" class="q-title">How did you hear about this survey?</div>
+    <div role="textbox" aria-labelledby="q-hear" contenteditable="true" class="editable" data-target="heard_from"></div>
+    <input type="hidden" name="heard_from" value="">
+  </div>
+
+  <div class="question">
+    <div id="q-feedback" class="q-title">What would make your tools better?</div>
+    <div role="textbox" aria-multiline="true" aria-labelledby="q-feedback" contenteditable="true" class="editable" data-target="feedback" data-maxlength="800"></div>
+    <input type="hidden" name="feedback" value="">
+  </div>
+  <button type="submit">Submit</button>
+</form>
+<script src="/static/survey.js"></script>
+{% endblock %}

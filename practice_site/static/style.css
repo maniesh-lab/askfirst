@@ -1,0 +1,41 @@
+:root { --ink: #1d2433; --muted: #5b6475; --line: #d7dbe3; --accent: #2457c5; --bad: #b42318; --good: #157f3b; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.5 system-ui, sans-serif; color: var(--ink); background: #f7f8fa; }
+.banner { background: #fff4ce; border-bottom: 1px solid #e8d48a; padding: 8px 16px; font-weight: 600; text-align: center; }
+.top { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--line); }
+.top nav { display: flex; flex-wrap: wrap; gap: 12px; }
+.top a { color: var(--accent); text-decoration: none; }
+.brand { font-weight: 700; color: var(--ink) !important; }
+.search { margin-left: auto; display: flex; gap: 6px; }
+main { max-width: 720px; margin: 24px auto; padding: 0 16px 48px; }
+.field { margin: 0 0 16px; border: 0; padding: 0; }
+fieldset.field legend, label { display: block; font-weight: 600; margin-bottom: 4px; }
+label.inline { display: block; font-weight: 400; }
+input[type=text], input[type=email], input[type=tel], input[type=url], input[type=number],
+input[type=date], input[type=password], input[type=search], select, textarea, .editable, [role=combobox] {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff;
+}
+.search input { width: 180px; }
+button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+button.secondary, button.back { background: #fff; color: var(--accent); }
+.error { color: var(--bad); margin: 4px 0 0; }
+.error-summary { border: 1px solid var(--bad); color: var(--bad); padding: 8px 12px; border-radius: 6px; margin-bottom: 16px; }
+.success { color: var(--good); font-size: 1.1em; }
+.job { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px; margin-bottom: 24px; }
+/* The honeypot: a person never sees it; a careless bot fills it. */
+.hp-field { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+fieldset.step { border: 1px solid var(--line); border-radius: 8px; padding: 16px; background: #fff; }
+.question { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.q-title { font-weight: 600; margin-bottom: 8px; }
+[role=radiogroup] { display: flex; gap: 8px; }
+[role=radio], [role=checkbox] { border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; user-select: none; }
+[role=radio][aria-checked=true], [role=checkbox][aria-checked=true] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.combo { position: relative; }
+[role=listbox] { list-style: none; margin: 4px 0 0; padding: 4px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+[role=option] { padding: 4px 8px; cursor: pointer; }
+[role=option][aria-selected=true], [role=option]:hover { background: #e8eefb; }
+.editable { min-height: 44px; }
+table.subs { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+table.subs th, table.subs td { border: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
+table.subs code { white-space: pre-wrap; word-break: break-word; }

@@ -1,0 +1,133 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Apply: Junior Support Engineer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="banner" role="note">Practice forms for automation testing. Not a real job board or marketplace.</div>
+  <header class="top">
+    <a href="/" class="brand">Practice forms</a>
+    <nav>
+      <a href="/jobs/apply">Job application</a>
+      <a href="/listings/new">Marketplace</a>
+      <a href="/contact">Contact</a>
+      <a href="/survey">Survey</a>
+      <a href="/submissions">Submissions</a>
+    </nav>
+    <form class="search" action="/" method="get" role="search">
+      <input type="search" name="q" aria-label="Search the site" placeholder="Search">
+      <button type="submit">Search</button>
+    </form>
+  </header>
+  <main>
+    
+<h1>Apply: Junior Support Engineer</h1>
+<section class="job" aria-labelledby="job-heading">
+  <h2 id="job-heading">About the role</h2>
+  <p>Practice Co. is a made-up company. In this pretend role you would help customers with
+  setup questions, write short how-to guides, and pass clear bug reports to the product team.</p>
+  <ul>
+    <li>Answer customer questions by email and chat</li>
+    <li>Write and update help articles</li>
+    <li>Reproduce problems and report them clearly</li>
+  </ul>
+  <p>We value patience, clear writing and curiosity.</p>
+</section>
+
+
+<form id="application" action="/jobs/apply" method="post" enctype="multipart/form-data" novalidate="">
+  <input type="hidden" name="csrf_token" value="fixture-token">
+
+  <div class="field">
+    <label for="full_name">Full name *</label>
+    <input id="full_name" name="full_name" type="text" autocomplete="name" required="" value="">
+    
+  </div>
+  <div class="field">
+    <label for="email">Email *</label>
+    <input id="email" name="email" type="email" autocomplete="email" required="" value="">
+    
+  </div>
+  
+  <div class="field">
+    <label for="phone">Phone *</label>
+    <input id="phone" name="phone" type="tel" autocomplete="tel" required="" value="">
+    
+  </div>
+  
+  <div class="field">
+    <label for="location">Location *</label>
+    <select id="location" name="location" required="">
+      <option value="">Choose a city</option>
+      
+      <option value="Kathmandu">Kathmandu</option>
+      
+      <option value="Lalitpur">Lalitpur</option>
+      
+      <option value="Pokhara">Pokhara</option>
+      
+      <option value="Biratnagar">Biratnagar</option>
+      
+      <option value="Remote">Remote</option>
+      
+    </select>
+    
+  </div>
+  <div class="field">
+    <label for="linkedin">LinkedIn profile URL</label>
+    <input id="linkedin" name="linkedin" type="url" autocomplete="url" value="">
+    
+  </div>
+  <div class="field">
+    <label for="years_experience">Years of experience</label>
+    <input id="years_experience" name="years_experience" type="number" min="0" max="50" value="">
+    
+  </div>
+  <fieldset class="field">
+    <legend>Are you allowed to work in Nepal? *</legend>
+    
+    <label class="inline"><input type="radio" name="work_authorization" value="yes" required=""> Yes, I can work in Nepal</label>
+    
+    <label class="inline"><input type="radio" name="work_authorization" value="visa" required=""> I will need a visa</label>
+    
+    <label class="inline"><input type="radio" name="work_authorization" value="no" required=""> No</label>
+    
+    
+  </fieldset>
+  <div class="field">
+    <label for="start_date">Earliest start date</label>
+    <input id="start_date" name="start_date" type="date" value="">
+    
+  </div>
+  <div class="field">
+    <label for="why_role">Why do you want this role? *</label>
+    <textarea id="why_role" name="why_role" maxlength="500" rows="4" required=""></textarea>
+    
+  </div>
+  <div class="field">
+    <label for="cover_letter">Cover letter</label>
+    <textarea id="cover_letter" name="cover_letter" maxlength="1500" rows="8"></textarea>
+    
+  </div>
+  <div class="field">
+    <label for="resume">Resume (PDF)</label>
+    <input id="resume" name="resume" type="file" accept=".pdf,application/pdf">
+    
+  </div>
+  <div class="hp-field" aria-hidden="true">
+    <label for="website">Website</label>
+    <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+  </div>
+  <div class="field">
+    <label class="inline"><input type="checkbox" id="consent" name="consent" value="yes" required=""> I agree that Practice Co. may store this application *</label>
+    
+  </div>
+  
+  <button type="submit">Submit application</button>
+</form>
+
+  </main>
+
+</body></html>

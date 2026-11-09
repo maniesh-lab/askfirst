@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Edge: a field that appears after a checkbox</title></head>
+<body>
+<h1>Newsletter</h1>
+<form id="news" action="/news" method="post">
+  <label for="em">Email</label>
+  <input id="em" name="email" type="email" required>
+  <label><input id="other" type="checkbox" name="has_referrer" value="yes"> Someone referred me</label>
+  <div id="ref-box" hidden>
+    <label for="ref">Referrer's email</label>
+    <input id="ref" name="referrer_email" type="email">
+  </div>
+  <button type="submit">Subscribe</button>
+</form>
+<script>
+  document.getElementById("other").addEventListener("change", (e) => {
+    document.getElementById("ref-box").hidden = !e.target.checked;
+  });
+</script>
+</body></html>

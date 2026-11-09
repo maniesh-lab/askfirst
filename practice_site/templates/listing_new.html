@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_macros.html" import err %}
+{% block title %}New listing{% endblock %}
+{% block content %}
+<h1>Create a listing</h1>
+<p class="steps" aria-live="polite">Step <span id="step-number">1</span> of 4</p>
+{% if errors %}<div class="error-summary" role="alert">Please fix the highlighted fields.</div>{% endif %}
+<form id="listing" action="/listings/new" method="post" enctype="multipart/form-data" novalidate data-start-step="{{ start_step or 1 }}">
+  <input type="hidden" name="csrf_token" value="{{ token }}">
+
+  <fieldset class="step" data-step="1">
+    <legend>Step 1: The item</legend>
+    <div class="field">
+      <label for="title">Listing title *</label>
+      <input id="title" name="title" type="text" maxlength="80" required value="{{ values.get('title', '') }}">
+      {{ err(errors, 'title') }}
+    </div>
+    <div class="field">
+      <label for="category">Category *</label>
+      <select id="category" name="category" required>
+        <option value="">Choose a category</option>
+        {% for group, options in forms.CATEGORIES.items() %}
+        <optgroup label="{{ group }}">
+          {% for value, text in options %}
+          <option value="{{ value }}" {% if values.get('category') == value %}selected{% endif %}>{{ text }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+      {{ err(errors, 'category') }}
+    </div>
+    <fieldset class="field">
+      <legend>Condition *</legend>
+      {% for value, text in forms.CONDITIONS %}
+      <label class="inline"><input type="radio" name="condition" value="{{ value }}" {% if values.get('condition') == value %}checked{% endif %}> {{ text }}</label>
+      {% endfor %}
+      {{ err(errors, 'condition') }}
+    </fieldset>
+    <button type="button" class="next">Next</button>
+  </fieldset>
+
+  <fieldset class="step" data-step="2" hidden>
+    <legend>Step 2: Price and delivery</legend>
+    <div class="field">
+      <label for="price">Price *</label>
+      <input id="price" name="price" type="number" min="1" step="1" required value="{{ values.get('price', '') }}">
+      {{ err(errors, 'price') }}
+    </div>
+    <div class="field">
+      <label for="currency">Currency *</label>
+      <select id="currency" name="currency" required>
+        {% for c in forms.CURRENCIES %}<option value="{{ c }}" {% if values.get('currency') == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="quantity">Quantity *</label>
+      <input id="quantity" name="quantity" type="number" min="1" required value="{{ values.get('quantity', '1') }}">
+      {{ err(errors, 'quantity') }}
+    </div>
+    <fieldset class="field">
+      <legend>Shipping options</legend>
+      {% for value, text in forms.SHIPPING %}
+      <label class="inline"><input type="checkbox" name="shipping" value="{{ value }}" {% if value in (values.get('shipping') or []) %}checked{% endif %}> {{ text }}</label>
+      {% endfor %}
+    </fieldset>
+    <button type="button" class="back">Back</button>
+    <button type="button" class="next">Continue</button>
+  </fieldset>
+
+  <fieldset class="step" data-step="3" hidden>
+    <legend>Step 3: Description and photos</legend>
+    <div class="field">
+      <label for="description">Description *</label>
+      <textarea id="description" name="description" maxlength="2000" rows="8" required>{{ values.get('description', '') }}</textarea>
+      {{ err(errors, 'description') }}
+    </div>
+    <div class="field">
+      <label for="photos">Photos</label>
+      <input id="photos" name="photos" type="file" accept="image/*" multiple>
+    </div>
+    <button type="button" class="back">Back</button>
+    <button type="button" class="next">Review listing</button>
+  </fieldset>
+
+  <fieldset class="step" data-step="4" hidden>
+    <legend>Step 4: Review</legend>
+    <dl id="review-summary"></dl>
+    {{ err(errors, 'csrf_token') }}
+    <button type="button" class="back">Back</button>
+    <button type="submit" name="action" value="draft" class="secondary">Save draft</button>
+    <button type="submit" name="action" value="publish">Publish listing</button>
+  </fieldset>
+</form>
+<script src="/static/steps.js"></script>
+{% endblock %}

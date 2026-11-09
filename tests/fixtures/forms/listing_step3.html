@@ -1,0 +1,149 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>New listing</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="banner" role="note">Practice forms for automation testing. Not a real job board or marketplace.</div>
+  <header class="top">
+    <a href="/" class="brand">Practice forms</a>
+    <nav>
+      <a href="/jobs/apply">Job application</a>
+      <a href="/listings/new">Marketplace</a>
+      <a href="/contact">Contact</a>
+      <a href="/survey">Survey</a>
+      <a href="/submissions">Submissions</a>
+    </nav>
+    <form class="search" action="/" method="get" role="search">
+      <input type="search" name="q" aria-label="Search the site" placeholder="Search">
+      <button type="submit">Search</button>
+    </form>
+  </header>
+  <main>
+    
+<h1>Create a listing</h1>
+<p class="steps" aria-live="polite">Step <span id="step-number">3</span> of 4</p>
+
+<form id="listing" action="/listings/new" method="post" enctype="multipart/form-data" novalidate="" data-start-step="3">
+  <input type="hidden" name="csrf_token" value="fixture-token">
+
+  <fieldset class="step" data-step="1" hidden="">
+    <legend>Step 1: The item</legend>
+    <div class="field">
+      <label for="title">Listing title *</label>
+      <input id="title" name="title" type="text" maxlength="80" required="" value="">
+      
+    </div>
+    <div class="field">
+      <label for="category">Category *</label>
+      <select id="category" name="category" required="">
+        <option value="">Choose a category</option>
+        
+        <optgroup label="Electronics">
+          
+          <option value="phones">Phones</option>
+          
+          <option value="laptops">Laptops</option>
+          
+          <option value="audio">Audio</option>
+          
+        </optgroup>
+        
+        <optgroup label="Home">
+          
+          <option value="kitchen">Kitchen</option>
+          
+          <option value="furniture">Furniture</option>
+          
+        </optgroup>
+        
+        <optgroup label="Hobbies">
+          
+          <option value="books">Books</option>
+          
+          <option value="music">Musical instruments</option>
+          
+          <option value="sports">Sports</option>
+          
+        </optgroup>
+        
+      </select>
+      
+    </div>
+    <fieldset class="field">
+      <legend>Condition *</legend>
+      
+      <label class="inline"><input type="radio" name="condition" value="new"> New</label>
+      
+      <label class="inline"><input type="radio" name="condition" value="like_new"> Like new</label>
+      
+      <label class="inline"><input type="radio" name="condition" value="used"> Used</label>
+      
+      
+    </fieldset>
+    <button type="button" class="next">Next</button>
+  </fieldset>
+
+  <fieldset class="step" data-step="2" hidden="">
+    <legend>Step 2: Price and delivery</legend>
+    <div class="field">
+      <label for="price">Price *</label>
+      <input id="price" name="price" type="number" min="1" step="1" required="" value="">
+      
+    </div>
+    <div class="field">
+      <label for="currency">Currency *</label>
+      <select id="currency" name="currency" required="">
+        <option value="NPR">NPR</option><option value="USD">USD</option><option value="INR">INR</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="quantity">Quantity *</label>
+      <input id="quantity" name="quantity" type="number" min="1" required="" value="1">
+      
+    </div>
+    <fieldset class="field">
+      <legend>Shipping options</legend>
+      
+      <label class="inline"><input type="checkbox" name="shipping" value="pickup"> Local pickup</label>
+      
+      <label class="inline"><input type="checkbox" name="shipping" value="courier"> Courier in the valley</label>
+      
+      <label class="inline"><input type="checkbox" name="shipping" value="national"> Nationwide post</label>
+      
+    </fieldset>
+    <button type="button" class="back">Back</button>
+    <button type="button" class="next">Continue</button>
+  </fieldset>
+
+  <fieldset class="step" data-step="3">
+    <legend>Step 3: Description and photos</legend>
+    <div class="field">
+      <label for="description">Description *</label>
+      <textarea id="description" name="description" maxlength="2000" rows="8" required=""></textarea>
+      
+    </div>
+    <div class="field">
+      <label for="photos">Photos</label>
+      <input id="photos" name="photos" type="file" accept="image/*" multiple="">
+    </div>
+    <button type="button" class="back">Back</button>
+    <button type="button" class="next">Review listing</button>
+  </fieldset>
+
+  <fieldset class="step" data-step="4" hidden="">
+    <legend>Step 4: Review</legend>
+    <dl id="review-summary"></dl>
+    
+    <button type="button" class="back">Back</button>
+    <button type="submit" name="action" value="draft" class="secondary">Save draft</button>
+    <button type="submit" name="action" value="publish">Publish listing</button>
+  </fieldset>
+</form>
+<script src="/static/steps.js"></script>
+
+  </main>
+
+</body></html>

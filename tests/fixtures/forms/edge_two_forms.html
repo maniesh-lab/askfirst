@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Edge: a search box and the real form</title></head>
+<body>
+<header>
+  <form id="site-search" action="/search" method="get" role="search">
+    <input type="search" name="q" aria-label="Search">
+    <button type="submit">Go</button>
+  </form>
+</header>
+<h1>Request a quote</h1>
+<form id="quote" action="/quote" method="post">
+  <label for="q-name">Your name</label><input id="q-name" name="name" type="text" autocomplete="name" required>
+  <label for="q-email">Email</label><input id="q-email" name="email" type="email" autocomplete="email" required>
+  <label for="q-phone">Phone</label><input id="q-phone" name="phone" type="tel">
+  <label for="q-details">Tell us about your project</label><textarea id="q-details" name="details" maxlength="600"></textarea>
+  <input type="submit" value="Request quote">
+</form>
+</body></html>

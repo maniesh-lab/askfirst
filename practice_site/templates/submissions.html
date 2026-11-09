@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Submissions{% endblock %}
+{% block content %}
+<h1>Submissions</h1>
+<p>{{ rows|length }} stored. JSON: <a href="/api/submissions">/api/submissions</a></p>
+<table class="subs">
+  <thead><tr><th>ID</th><th>Form</th><th>When (UTC)</th><th>Bot flag</th><th>Data</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.id }}</td><td>{{ r.form }}</td><td>{{ r.created_at }}</td>
+      <td>{{ 'flagged' if r.flagged_bot else '' }}</td>
+      <td><code>{{ r.data | tojson }}</code></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

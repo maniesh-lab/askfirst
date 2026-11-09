@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Contact us{% endblock %}
+{% block content %}
+<h1>Contact us</h1>
+<p>Questions about the practice site? Send us a note.</p>
+{% if errors %}<div class="error-summary" role="alert">{% for k, v in errors.items() %}<p class="error">{{ v }}</p>{% endfor %}</div>{% endif %}
+<form id="contact" action="/contact" method="post">
+  <div class="field"><input name="name" type="text" placeholder="Your name" value="{{ values.get('name', '') }}"></div>
+  <div class="field"><input name="email" type="email" aria-label="Email address" placeholder="you@example.com" value="{{ values.get('email', '') }}"></div>
+  <div class="field">
+    <select name="topic" aria-label="Topic">
+      {% for t in forms.CONTACT_TOPICS %}<option {% if values.get('topic') == t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field"><textarea name="message" rows="5" maxlength="1000" placeholder="How can we help?">{{ values.get('message', '') }}</textarea></div>
+  <button>Send message</button>
+</form>
+{% endblock %}

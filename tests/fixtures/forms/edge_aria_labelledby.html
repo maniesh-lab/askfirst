@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Edge: aria-labelledby and wrapping labels</title></head>
+<body>
+<h1>Volunteer sign-up</h1>
+<form id="signup" action="/signup" method="post">
+  <p id="fn-label">First name</p>
+  <input name="fname" type="text" aria-labelledby="fn-label" required>
+
+  <label>Last name <input name="lname" type="text"></label>
+
+  <span id="city-a">City</span><span id="city-b">(where you live now)</span>
+  <input name="city" type="text" aria-labelledby="city-a city-b">
+
+  <input name="nickname" type="text" aria-label="Nickname">
+
+  <p>Postal code *</p>
+  <input name="zip" type="text">
+
+  <label for="email-x">Email address</label>
+  <input id="email-x" name="contact_email" type="email" aria-required="true">
+
+  <button type="submit">Sign up</button>
+</form>
+</body></html>

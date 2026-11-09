@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Edge: draft vs publish, and button kinds</title></head>
+<body>
+<h1>Write a post</h1>
+<form id="post" action="/posts" method="post">
+  <label for="t">Title</label><input id="t" name="title" type="text" required>
+  <label for="b">Body</label><textarea id="b" name="body" maxlength="3000"></textarea>
+  <button type="button">Preview</button>
+  <button type="button">Back</button>
+  <button type="submit" name="op" value="draft">Save draft</button>
+  <input type="submit" name="op" value="Publish post">
+  <button type="reset">Clear</button>
+</form>
+</body></html>

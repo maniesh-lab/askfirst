@@ -1,0 +1,6 @@
+title,category,condition,price,currency,quantity,shipping,description,photos
+Practice desk lamp,furniture,like_new,1800,NPR,1,pickup;courier,"A small adjustable desk lamp with a warm bulb. Works well, light scratches on the base.",profiles/files/product.png
+Pretend acoustic guitar,music,used,9500,NPR,1,pickup,"Six-string guitar for beginners. New strings fitted last month. Soft case included.",profiles/files/product.png
+Sample cookbook,books,new,650,NPR,3,courier;national,"A sealed copy of a vegetarian cookbook with 80 everyday recipes.",
+Test wireless earbuds,audio,used,2500,NPR,1,courier,"Earbuds with charging case. Battery lasts about four hours.",profiles/files/product.png
+Example cricket bat,sports,like_new,3200,NPR,2,pickup;national,"Light willow bat, used for one season. Grip replaced.",profiles/files/product.png

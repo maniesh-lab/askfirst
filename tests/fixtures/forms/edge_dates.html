@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Edge: date input variants</title></head>
+<body>
+<h1>Book a visit</h1>
+<form id="visit" action="/visit" method="post">
+  <label for="d1">Date of birth</label><input id="d1" name="dob" type="date" autocomplete="bday">
+  <label for="d2">Arrival</label><input id="d2" name="arrival" type="datetime-local">
+  <label for="d3">Month of travel</label><input id="d3" name="travel_month" type="month">
+  <label for="d4">Preferred time</label><input id="d4" name="visit_time" type="time">
+  <label for="d5">Start date (YYYY-MM-DD)</label><input id="d5" name="start_text" type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}">
+  <button>Confirm booking</button>
+</form>
+</body></html>

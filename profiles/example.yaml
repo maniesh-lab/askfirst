@@ -1,0 +1,74 @@
+# A made-up person for testing. Nothing here belongs to a real human.
+# The browser agent fills forms from this profile by rule; the LLM may only use these facts.
+version: 1
+
+identity:
+  first_name: Riya
+  last_name: Testwell
+  full_name: Riya Testwell
+
+contact:
+  email: riya.testwell@example.com
+  phone: "+977 980-000-0123"
+
+address:
+  street: 12 Example Marg
+  city: Lalitpur
+  region: Bagmati
+  postal_code: "44700"
+  country: Nepal
+  country_code: NP
+
+links:
+  linkedin: https://example.com/in/riya-testwell
+  github: https://example.com/gh/riya-testwell
+  website: https://example.com/riya
+
+work:
+  years_experience: 3
+  # yes | visa | no
+  authorization: "yes"
+  earliest_start: "2026-12-01"
+  current_title: Support Specialist
+  history:
+    - title: Support Specialist
+      company: Example Labs
+      start: "2023"
+      end: present
+      summary: >-
+        Answers customer emails and chats for a small software product, writes help articles,
+        and turns customer problems into clear bug reports for the developers.
+    - title: Office Assistant
+      company: Sample Traders
+      start: "2021"
+      end: "2023"
+      summary: Kept customer records up to date and handled phone enquiries.
+
+education:
+  - degree: Bachelor of Business Studies
+    school: Example College
+    year: "2021"
+
+skills:
+  - customer support
+  - writing help articles
+  - bug reporting
+  - spreadsheets
+  - patience with confused users
+
+# Fixed answers for questions that come up often, matched by pattern (case-insensitive regex).
+answers:
+  # Ticks agreement boxes such as "I agree that ... may store this application". The review
+  # screen flags every box ticked this way, so a person always sees what was agreed to.
+  - pattern: "^i agree\\b"
+    answer: "yes"
+  - pattern: "how did you hear"
+    answer: Through a friend.
+  - pattern: "notice period"
+    answer: Two weeks.
+
+# Files the agent may upload. Only files under profiles/files/ are ever allowed.
+files:
+  resume: profiles/files/resume.pdf
+  photos:
+    - profiles/files/product.png
