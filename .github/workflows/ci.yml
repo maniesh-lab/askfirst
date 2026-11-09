@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The jobs only read the code; the token gets nothing more, whatever the repo default is.
+permissions:
+  contents: read
+
+# A new push to the same branch or PR cancels the run that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Ruff lint + format check, and actionlint over the workflow files.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.14.8"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check .
+      - name: Format check
+        run: ruff format --check .
+      - name: Lint workflows
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+
+  # Every test that doesn't need a browser, then the offline evals as regression thresholds.
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.14.8"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: pip install -e ".[dev,practice]"
+      # Every installed package against the public vulnerability database; red if any has a
+      # known security hole. A CI-only tool, so it is not in pyproject.toml.
+      - name: Check dependencies for known vulnerabilities
+        run: |
+          pip install pip-audit==2.10.1
+          pip-audit --skip-editable
+      - name: Unit tests
+        run: pytest -m "not browser" --ignore=tests/eval --cov-report=xml
+      # Drafting fact-check catch rate and triage scores must not drop (fake LLM, no network).
+      - name: Offline eval thresholds
+        run: pytest tests/eval --no-cov
+      - name: Coverage summary
+        run: coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+      # The README's coverage badge. Without the CODECOV_TOKEN secret the upload fails
+      # quietly and the job stays green.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7.1.1
+        with:
+          files: coverage.xml
+          flags: unit
+          disable_search: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # The browser agent in real headless Chromium against our practice site and fixtures,
+  # including the detection eval thresholds.
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Saved per browser session; uploaded only when the job fails.
+      PLAYWRIGHT_TRACE_DIR: ${{ github.workspace }}/playwright-traces
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.14.8"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: pip install -e ".[dev,practice]"
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(python -c 'import importlib.metadata as m; print(m.version("playwright"))')" >> "$GITHUB_OUTPUT"
+      # The browser download is keyed on the Playwright version (each version needs its own build).
+      - uses: actions/cache@v6.1.0
+        id: chromium-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Chromium
+        if: steps.chromium-cache.outputs.cache-hit != 'true'
+        run: python -m playwright install --with-deps chromium
+      - name: Install Chromium's system libraries (browser came from the cache)
+        if: steps.chromium-cache.outputs.cache-hit == 'true'
+        run: python -m playwright install-deps chromium
+      - name: Browser tests
+        run: pytest -m browser --cov-report=xml
+      - name: Coverage summary
+        run: coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7.1.1
+        with:
+          files: coverage.xml
+          flags: browser
+          disable_search: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+      # Traces only hold the fake persona and the practice site's own test password.
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: playwright-traces
+          path: playwright-traces/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # Build both images, start the practice site, run the agent to the gate, approve, and check
+  # exactly one submission (fake LLM, no outside network).
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Compose smoke test
+        run: ./scripts/compose_smoke.sh

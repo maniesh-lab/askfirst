@@ -1,0 +1,34 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Local run output
+data/
+runs/
+
+# Playwright
+test-results/
+playwright-report/
+playwright-traces/
+*.webm
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+practice_site/data/
