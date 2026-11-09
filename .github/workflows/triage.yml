@@ -1,0 +1,104 @@
+name: Triage digest
+
+on:
+  schedule:
+    # Weekdays 02:23 UTC = 08:08 in Nepal. Off the top of the hour, when GitHub's queue is quieter.
+    # GitHub may delay scheduled runs, and turns schedules off in public repos after 60 days
+    # without activity.
+    - cron: "23 2 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Window start (7d, 36h or an ISO date). Empty = since the last run."
+        required: false
+      mode:
+        description: "propose (issues unchanged; only the log issue gets a comment) or apply-labels"
+        required: false
+        default: propose
+        type: choice
+        options: [propose, apply-labels]
+      dry_run:
+        description: "Classify only; post nothing and write nothing to GitHub"
+        required: false
+        default: false
+        type: boolean
+
+# The bot reads and writes issues with its own fine-grained token (TRIAGE_GITHUB_TOKEN), so the
+# workflow's own token needs nothing more than reading the code.
+permissions:
+  contents: read
+
+# Never two triage runs at once (they would read the same window).
+concurrency:
+  group: triage
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LLM_PROVIDER: groq
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      TRIAGE_GITHUB_TOKEN: ${{ secrets.TRIAGE_GITHUB_TOKEN }}
+      TRIAGE_REPO: ${{ vars.TRIAGE_REPO }}
+      TRIAGE_MODE: ${{ inputs.mode || 'propose' }}
+      LOG_FORMAT: json
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # Without these the run would still go green: no webhook means the digest is only logged
+      # (and the window moves on), no token means read-only with no saved window. Fail loudly
+      # instead; GitHub emails the repo owner about a failed scheduled run.
+      - name: Check configuration
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          missing=()
+          [ -n "$TRIAGE_REPO" ] || missing+=("variable TRIAGE_REPO")
+          [ -n "$GROQ_API_KEY" ] || missing+=("secret GROQ_API_KEY")
+          [ -n "$TRIAGE_GITHUB_TOKEN" ] || missing+=("secret TRIAGE_GITHUB_TOKEN")
+          if [ "$DRY_RUN" != "true" ] && [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            missing+=("secret DISCORD_WEBHOOK_URL")
+          fi
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Triage is not configured. Missing: ${missing[*]}"
+            exit 1
+          fi
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.14.8"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: pip install -e .
+      - name: Triage
+        env:
+          SINCE: ${{ inputs.since }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          args=(--repo "$TRIAGE_REPO" --unattended --output-dir out)
+          if [ -n "$SINCE" ]; then args+=(--since "$SINCE"); fi
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python -m app.cli triage run "${args[@]}"
+      # The step summary and artifact are public in a public repo. If TRIAGE_REPO is private (or
+      # its visibility can't be read), the CLI writes only a counts-only digest.md to out/.
+      - name: Step summary
+        if: always()
+        run: |
+          if [ -f out/digest.md ]; then cat out/digest.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload digest and audit log
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: triage-${{ github.run_id }}
+          path: out/
+          retention-days: 30
+          if-no-files-found: ignore
+      - name: Tell Discord the run failed
+        # A broken schedule must never be silent.
+        if: failure() && env.DISCORD_WEBHOOK_URL != ''
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        # python3, not python: this step may run before setup-python did.
+        run: python3 scripts/notify_failure.py
