@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-08",
+  "provider": "fake",
+  "model": "fake",
+  "tokens": 4342,
+  "metrics": {
+    "issues": 29,
+    "category_accuracy": 0.8276,
+    "priority_exact": 0.6207,
+    "priority_within_one": 0.9655,
+    "label_f1": 0.7241,
+    "needs_info_precision": 1.0,
+    "needs_info_recall": 0.3333,
+    "duplicate_precision": 1.0,
+    "duplicate_recall": 0.5,
+    "security_escalation_recall": 1.0,
+    "unclassified_rate": 0.0,
+    "already_triaged_skipped": 1.0
+  },
+  "steadfast": {
+    "max_attempts_1": {
+      "unclassified_issues": 6,
+      "unclassified_rate": 0.2069,
+      "category_accuracy": 0.6552,
+      "simulated_invalid_replies": 12
+    },
+    "max_attempts_3": {
+      "unclassified_issues": 0,
+      "unclassified_rate": 0.0,
+      "category_accuracy": 0.8276,
+      "simulated_invalid_replies": 3
+    }
+  }
+}

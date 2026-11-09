@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-08",
+  "forms": [
+    "contact",
+    "edge_buttons",
+    "edge_two_forms",
+    "job_apply",
+    "job_apply_variant_b",
+    "survey"
+  ],
+  "questions": 8,
+  "planted": {
+    "planted": 112,
+    "caught": 112,
+    "catch_rate": 1.0,
+    "per_kind": {
+      "company": "8/8",
+      "person": "8/8",
+      "year": "8/8",
+      "count": "8/8",
+      "experience": "8/8",
+      "email": "8/8",
+      "url": "8/8",
+      "certificate": "8/8",
+      "school": "8/8",
+      "city": "8/8",
+      "product": "8/8",
+      "sentence_start_name": "8/8",
+      "percent": "8/8",
+      "phone": "8/8"
+    },
+    "missed": []
+  },
+  "clean": {
+    "clean_drafts": 42,
+    "false_alarms": 0,
+    "false_alarm_rate": 0.0,
+    "examples": []
+  },
+  "steadfast": {
+    "forms": 6,
+    "always_invents_left_empty": 6,
+    "invents_once_recovered_after_retry": 6
+  }
+}
