@@ -1,0 +1,46 @@
+# The practice site plus the browser agent, on one compose network.
+#   docker compose up -d practice-site
+#   docker compose run --rm agent fill site:practice/job_apply
+#   docker compose run --rm agent review approve <run_id>
+# The agent may only load the practice site (ALLOWED_HOSTS=practice-site).
+name: askfirst
+
+services:
+  practice-site:
+    build:
+      context: .
+      dockerfile: practice_site/Dockerfile
+    image: askfirst-practice
+    environment:
+      # Reset and the variant switch are for tests; leave them off anywhere public.
+      PRACTICE_ALLOW_RESET: ${PRACTICE_ALLOW_RESET:-0}
+      PRACTICE_SELLER_EMAIL: ${PRACTICE_SELLER_EMAIL:-seller@example.test}
+      PRACTICE_SELLER_PASSWORD: ${PRACTICE_SELLER_PASSWORD:-practice-only-pass}
+    ports:
+      - "127.0.0.1:8800:8800"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8800/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  agent:
+    build: .
+    image: askfirst-agent
+    profiles: ["agent"]
+    depends_on:
+      practice-site:
+        condition: service_healthy
+    environment:
+      ALLOWED_HOSTS: practice-site
+      PRACTICE_BASE_URL: http://practice-site:8800
+      PRACTICE_SELLER_EMAIL: ${PRACTICE_SELLER_EMAIL:-seller@example.test}
+      PRACTICE_SELLER_PASSWORD: ${PRACTICE_SELLER_PASSWORD:-practice-only-pass}
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      DISCORD_REVIEW_WEBHOOK_URL: ${DISCORD_REVIEW_WEBHOOK_URL:-}
+    volumes:
+      - agent-data:/app/data
+
+volumes:
+  agent-data:

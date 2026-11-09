@@ -1,0 +1,26 @@
+# The practice site live on Render's free plan, so the agent can be shown on a real, public
+# form that we own. To make your own copy: Render -> New -> Blueprint -> this repo, then fill in
+# the `sync: false` values. Free instances sleep after 15 minutes idle; the first request after
+# that waits about a minute. Submissions live in the container and are lost on each restart,
+# which is fine for a practice target.
+services:
+  - type: web
+    name: askfirst-practice
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    autoDeploy: false
+    dockerContext: .
+    dockerfilePath: ./practice_site/Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      # Never on a public deploy: anyone could wipe submissions or flip the page variant.
+      - key: PRACTICE_ALLOW_RESET
+        value: "0"
+      - key: PRACTICE_SECRET # openssl rand -hex 32
+        sync: false
+      - key: PRACTICE_SELLER_EMAIL
+        value: seller@example.test
+      - key: PRACTICE_SELLER_PASSWORD # a made-up password for the fake seller; set the same on the agent
+        sync: false
