@@ -1,0 +1,15 @@
+# Dependabot opens a pull request when a GitHub Action used in .github/workflows/ has a new
+# release. Python packages are left out on purpose: every package is pinned exactly, so that
+# would mean several PRs a week.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # One PR for all action updates found in the same week.
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
