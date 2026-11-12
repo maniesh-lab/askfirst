@@ -578,10 +578,15 @@ async def post_digest(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
     sent, errors = 0, []
     for n, embeds in enumerate(messages):
         try:
-            await ctx.notifier.send(
+            delivered = await ctx.notifier.send(
                 Channel.DIGEST, "" if n else headline(digest)[:2000], embeds=embeds
             )
-            sent += 1
+            # False means the digest channel has no webhook (only the review one is set), so
+            # nothing reached Discord. Counting it as posted would save the window anyway.
+            if delivered:
+                sent += 1
+            else:
+                errors.append("no webhook for the digest channel")
         except NotifyError as exc:
             # One bad message must not lose the rest (or the run's state).
             errors.append(str(exc)[:200])

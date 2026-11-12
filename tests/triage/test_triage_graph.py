@@ -163,6 +163,37 @@ async def test_digest_post_failure_keeps_the_run_and_saves_no_state(tmp_path: Pa
     assert AuditLog(tmp_path).count(run_id, "digest_post_failed") == 1
 
 
+class NoDigestChannelNotifier(FakeNotifier):
+    """What DiscordNotifier does when only the review webhook is set: the digest is skipped."""
+
+    async def send(self, channel, text="", *, embeds=None) -> bool:
+        return False
+
+
+async def test_digest_with_no_digest_webhook_is_not_posted_and_saves_no_state(
+    tmp_path: Path,
+) -> None:
+    gh = sandbox_github()
+    _, out, _ = await run(tmp_path, gh, NoDigestChannelNotifier(), since="60d")
+    assert out.status == "done" and out.values["post_failed"] and not out.values.get("posted")
+    assert out.values.get("log_issue") is None and not gh.writes  # the window doesn't move
+
+
+def test_cli_refuses_a_writing_run_without_a_digest_webhook(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TRIAGE_GITHUB_TOKEN", "github_pat_test_only")
+    monkeypatch.delenv("DISCORD_WEBHOOK_URL", raising=False)
+    get_settings.cache_clear()
+    try:
+        # Refused before anything is opened, so no GitHub call is made.
+        assert cli.main(["triage", "run", "--repo", "o/sandbox"]) == 2
+    finally:
+        get_settings.cache_clear()
+    assert "DISCORD_WEBHOOK_URL is not set" in capsys.readouterr().err
+
+
 async def test_no_token_marks_label_actions_not_applied_not_failed(tmp_path: Path) -> None:
     # What the runner builds without TRIAGE_GITHUB_TOKEN: a read-only client.
     gh = sandbox_github(read_only=True)

@@ -539,6 +539,17 @@ async def _triage(settings: Settings, args: argparse.Namespace) -> int:
             "log issue and no saved window (the next run starts from the default window again)",
             file=sys.stderr,
         )
+    if not read_only and settings.triage_github_token and not settings.discord_webhook_url:
+        # Without a webhook the digest is only logged, but the run would still save its window
+        # in the log issue, so the next run would skip these issues and nobody sees the digest.
+        # The workflow's "Check configuration" step refuses this too.
+        print(
+            "DISCORD_WEBHOOK_URL is not set: the digest would only be logged, yet this run would "
+            "save its window in the repo and the next run would skip these issues. Set the "
+            "webhook, or add --dry-run to see the digest without writing anything.",
+            file=sys.stderr,
+        )
+        return 2
     async with open_triage_runner(
         settings, read_only=read_only, actions_url=_actions_url()
     ) as runner:
