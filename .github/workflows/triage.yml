@@ -6,6 +6,8 @@ on:
     # GitHub may delay scheduled runs, and turns schedules off in public repos after 60 days
     # without activity.
     - cron: "23 2 * * 1-5"
+    # One-off for the schedule proof: 12:37 UTC on 12 Nov only. Removed after it runs.
+    - cron: "37 12 12 11 *"
   workflow_dispatch:
     inputs:
       since:
