@@ -76,7 +76,10 @@ async def main_async(repeat: int) -> None:
             forms.append(await form_run(Path(tmp)))
         with tempfile.TemporaryDirectory() as tmp:
             triages.append(await triage_run(Path(tmp)))
-    print(f"| Run | Median of {repeat} | Tokens (fake LLM) |")
+    # Name the provider the runs really used, so a live table is never labelled "fake".
+    provider = Settings(_env_file=None).llm_provider
+    label = "fake LLM" if provider == "fake" else provider
+    print(f"| Run | Median of {repeat} | Tokens ({label}) |")
     print("|---|---|---|")
     print(
         f"| Form: start to review gate (job form, 12 fields, 2 drafted) | "
@@ -93,7 +96,9 @@ async def main_async(repeat: int) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Time a form run and a triage run (offline)")
+    parser = argparse.ArgumentParser(
+        description="Time a form run and a triage run (fake LLM unless LLM_PROVIDER is set)"
+    )
     parser.add_argument("--repeat", type=int, default=3)
     args = parser.parse_args()
     configure_logging("ERROR", "console")
