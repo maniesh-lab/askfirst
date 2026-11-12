@@ -20,8 +20,22 @@ Measured 2026-11-08 during Phase 9 with `python -m scripts.measure_runs` (median
 - "Approve to submitted" includes opening a fresh browser and replaying the fill, because the
   agent never keeps a browser open while it waits for a person (see docs/failure-handling.md).
 
-## Still to measure (live, Boss)
+## Live on Groq (2026-11-12)
 
-- The same two runs with `LLM_PROVIDER=groq` (real latency and token counts): set
-  `GROQ_API_KEY` and run `LLM_PROVIDER=groq python -m scripts.measure_runs --repeat 1`
-  (about 2 drafting calls and 6 triage calls).
+The same two runs with `LLM_PROVIDER=groq` (model `openai/gpt-oss-20b`, free tier), one run
+each: `LLM_PROVIDER=groq GROQ_API_KEY=... python -m scripts.measure_runs --repeat 1`.
+
+| Run | One run | Tokens (groq) |
+|---|---|---|
+| Form: start to review gate (job form, 12 fields, 2 drafted) | 8.0 s | 3356 (whole run) |
+| Form: approve to submitted (replay + submit) | 0.8 s | (in the row above) |
+| Triage: 30 issues, fetch to digest | 179.8 s | 27671 |
+
+- **Form:** the model adds about 7 seconds before the review gate. Approve to submitted makes no
+  LLM call (it replays the saved plan), so it stays under a second.
+- **Triage** is slow on the free tier because of its rate limit (8,000 tokens a minute): 30
+  issues need about 28,000 tokens, so the client has to wait for the limit to reset between
+  calls. That is about 3.5 minutes of tokens at that rate, which matches the ~3 minutes here
+  and the 142 s of the first live workflow run on GitHub. A paid tier would be limited by the
+  model's response time instead.
+- One run each, so these are rough, not medians.
