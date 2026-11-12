@@ -1,5 +1,7 @@
 """Detection on saved fixtures, the host allowlist and the network guard, in real Chromium."""
 
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -88,6 +90,66 @@ async def test_goto_refuses_hosts_not_allowed(tmp_path: Path) -> None:
         with pytest.raises(HostNotAllowed):
             await s.goto(page, "file:///etc/passwd")
     assert AuditLog(tmp_path).count("form-test", "blocked_navigation") == 2
+
+
+class _Redirector(BaseHTTPRequestHandler):
+    """/off -> another host, /same -> /landed on this host, /landed -> a plain page."""
+
+    hits: list[tuple[str, str]] = []
+
+    def do_GET(self) -> None:  # noqa: N802 - http.server's name
+        self.hits.append((self.headers.get("Host", ""), self.path))
+        port = self.server.server_address[1]
+        targets = {"/off": f"http://localhost:{port}/landed", "/same": "/landed"}
+        if self.path in targets:
+            self.send_response(302)
+            self.send_header("Location", targets[self.path])
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"<p>landed</p>")
+
+    def log_message(self, *args: object) -> None:
+        pass
+
+
+@pytest.fixture
+def redirector():
+    _Redirector.hits = []
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _Redirector)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+
+
+async def test_redirect_to_a_host_not_allowed_is_blocked(tmp_path: Path, redirector: str) -> None:
+    # Playwright routes only the first URL of a redirect chain; without our own check the
+    # page would follow this redirect to `localhost`, which isn't allowed.
+    settings = Settings(_env_file=None, data_dir=tmp_path, allowed_hosts="127.0.0.1")
+    async with BrowserSession(settings, run_id="form-test", audit=AuditLog(tmp_path)) as s:
+        page = await s.new_page()
+        with pytest.raises(HostNotAllowed):
+            await s.goto(page, f"{redirector}/off")
+        assert not page.url.startswith("http://localhost")
+    assert not any(host.startswith("localhost") for host, _ in _Redirector.hits)
+    assert (
+        AuditLog(tmp_path).count(
+            "form-test", "blocked_request", reason="redirect to a host not allowed"
+        )
+        == 1
+    )
+
+
+async def test_redirect_within_allowed_hosts_still_works(tmp_path: Path, redirector: str) -> None:
+    settings = Settings(_env_file=None, data_dir=tmp_path, allowed_hosts="127.0.0.1")
+    async with BrowserSession(settings, run_id="form-test") as s:
+        page = await s.new_page()
+        await s.goto(page, f"{redirector}/same")
+        assert page.url == f"{redirector}/landed"
+        assert await page.locator("p").inner_text() == "landed"
+    assert not s.guard.blocked
 
 
 async def test_requests_to_other_hosts_are_aborted_and_audited(tmp_path: Path) -> None:

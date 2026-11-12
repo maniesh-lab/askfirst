@@ -148,7 +148,9 @@ Three guards inside the browser keep it from doing anything else (`app/browser/s
 
 1. **Host allowlist.** `goto()` refuses other hosts, and a route handler aborts every request
    (pages, scripts, images, XHR) to them. Each block is an audit event. Service workers are off
-   and WebSockets are closed, since neither goes through that handler.
+   and WebSockets are closed, since neither goes through that handler. Playwright doesn't route
+   redirects, so page loads are fetched with redirects off and every hop is checked before the
+   browser may follow it; a redirect to another host is blocked and audited.
 2. **Network guard.** Every POST, PUT, PATCH and DELETE is aborted, so a stray Enter key can't
    submit. Exactly two writes are ever let through, one at a time: the login form's own POST,
    and the approved submit.

@@ -5,7 +5,10 @@ Three layers keep the agent from doing anything it shouldn't:
 1. **Host allowlist.** `goto()` refuses a URL whose host isn't in `ALLOWED_HOSTS`, and a
    context-wide route handler aborts every request (pages, scripts, images, XHR) to any other
    host. Each blocked request is an audit event. Service workers are off and WebSockets are
-   closed, since neither goes through that handler.
+   closed, since neither goes through that handler. Playwright only routes the first URL of a
+   redirect chain, so page loads are fetched here with redirects turned off and every hop of
+   the chain is checked before the browser may follow it; `goto()` also checks where the
+   page ended up.
 2. **Network guard.** Every POST, PUT, PATCH and DELETE is aborted, so an accidental Enter key
    can't submit the form. The only exceptions are added one at a time with
    `guard.allow_write(method, url)`: the login step's one login request, and the approved
@@ -24,10 +27,11 @@ from dataclasses import dataclass, field
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 import structlog
 from playwright.async_api import (
+    APIResponse,
     Browser,
     BrowserContext,
     Page,
@@ -37,6 +41,7 @@ from playwright.async_api import (
     WebSocketRoute,
     async_playwright,
 )
+from playwright.async_api import Error as PlaywrightError
 
 from app.config import Settings
 from app.runtime.audit import AuditLog
@@ -44,6 +49,9 @@ from app.runtime.audit import AuditLog
 log = structlog.get_logger(__name__)
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+REDIRECT_CODES = {301, 302, 303, 307, 308}
+# Browsers give up after about 20 hops; our own sites never need more than a couple.
+MAX_REDIRECTS = 10
 VIEWPORT = {"width": 1280, "height": 900}
 
 # Runs before any page script. `__askfirstSubmit` is only set by the approved submit step.
@@ -196,8 +204,21 @@ class BrowserSession:
 
     async def goto(self, page: Page, url: str) -> None:
         self.check_host(url)
-        await page.goto(url, wait_until="domcontentloaded")
+        blocked_before = len(self.guard.blocked)
+        try:
+            await page.goto(url, wait_until="domcontentloaded")
+        except PlaywrightError as exc:
+            new = self.guard.blocked[blocked_before:]
+            if any(b.get("reason", "").startswith("redirect") for b in new):
+                raise HostNotAllowed(f"{url!r} redirects to a host not in ALLOWED_HOSTS") from exc
+            raise
         await page.wait_for_load_state("load")
+        # Backstop: wherever the page ended up must still be an allowed host.
+        landed = page.url
+        if host_of(landed) not in self.allowed_hosts:
+            self._record("blocked_navigation", reason="ended off host", url=_strip_query(landed))
+            await page.goto("about:blank")
+            raise HostNotAllowed(f"{host_of(landed) or landed!r} is not in ALLOWED_HOSTS")
 
     async def allow_submit_scripts(self, page: Page, allowed: bool) -> None:
         await page.evaluate("v => { window.__askfirstSubmit = v; }", allowed)
@@ -224,7 +245,46 @@ class BrowserSession:
             return
         if self.fixture_server is not None and await self.fixture_server(route, request):
             return
+        if request.is_navigation_request():
+            await self._load_checking_redirects(route, url)
+            return
         await route.continue_()
+
+    async def _load_checking_redirects(self, route: Route, url: str) -> None:
+        # Playwright calls a route handler only for the first URL of a redirect chain, and
+        # Chromium follows a redirect without asking the handler again. So page loads are
+        # fetched here with redirects off, every hop of the chain is checked against the
+        # allowlist, and only then does the browser get the response (and follow it).
+        try:
+            response = await route.fetch(max_redirects=0)
+            off_host = await self._off_host_redirect(url, response)
+        except PlaywrightError as exc:
+            log.warning("page_fetch_failed", error=str(exc))
+            await route.abort("failed")
+            return
+        if off_host is not None:
+            self._record("blocked_request", reason="redirect to a host not allowed", url=off_host)
+            await route.abort("blockedbyclient")
+            return
+        await route.fulfill(response=response)
+
+    async def _off_host_redirect(self, url: str, response: APIResponse) -> str | None:
+        """Walk a redirect chain without following it in the page. Returns the first hop that
+        leaves ALLOWED_HOSTS (query stripped), or None when the whole chain stays inside."""
+        assert self.context is not None
+        for _ in range(MAX_REDIRECTS):
+            location = response.headers.get("location")
+            if response.status not in REDIRECT_CODES or not location:
+                return None
+            url = urljoin(url, location)
+            if (
+                urlsplit(url).scheme not in {"http", "https"}
+                or host_of(url) not in self.allowed_hosts
+            ):
+                return _strip_query(url)
+            # Only to learn where the chain goes next; a GET is enough for that.
+            response = await self.context.request.get(url, max_redirects=0)
+        return _strip_query(url)  # a chain this long is treated as leaving
 
     async def _on_web_socket(self, ws: WebSocketRoute) -> None:
         self._record("blocked_request", reason="websocket", url=_strip_query(ws.url))
