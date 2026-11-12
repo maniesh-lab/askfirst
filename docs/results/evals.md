@@ -6,9 +6,9 @@ in `eval/results/` that a script wrote. Rerun any of them with the command in it
 - **Date**: 2026-11-08
 - **Commit**: first run in Phase 8; all three evals re-run after the mapping fix for
   free-text questions and gave exactly the same results files. (The git history was condensed to one commit per phase on 2026-11-09, so older commit hashes no longer exist.)
-- **Model**: none of the numbers below used a real model. They are **offline**: the fake LLM
-  provider (`LLM_PROVIDER=fake`), which answers from keyword rules. The live runs (Groq,
-  `openai/gpt-oss-20b`) are listed under "Not measured yet".
+- **Model**: the Summary table is **offline**: the fake LLM provider (`LLM_PROVIDER=fake`),
+  which answers from keyword rules. The live runs on Groq (`openai/gpt-oss-20b`, 2026-11-12)
+  have their own table under "Live on Groq".
 
 ## Summary
 
@@ -34,6 +34,44 @@ in `eval/results/` that a script wrote. Rerun any of them with the command in it
 
 Commands: `python -m eval.run_detection_eval`, `python -m eval.run_drafting_eval`,
 `python -m eval.run_triage_eval --steadfast`.
+
+## Live on Groq (2026-11-12)
+
+Model `openai/gpt-oss-20b` on Groq's free tier, same 30 sandbox issues and 6 forms as above.
+
+| Area | Metric | Offline | Live | Results file |
+|---|---|---|---|---|
+| Triage safety | security issues escalated (**must be 100%**) | 100% | 100% | `eval/results/triage-live-2026-11-12.md` |
+| Triage | category accuracy | 82.8% | 93.1% | same |
+| Triage | priority exact / within one level | 62.1% / 96.6% | 86.2% / 100% | same |
+| Triage | label F1 (type + priority labels) | 72.4% | 89.7% | same |
+| Triage | needs-info precision / recall | 100% / 33.3% | 100% / 66.7% | same |
+| Triage | duplicate precision / recall | 100% / 50% | 100% / 100% | same |
+| Triage | already-triaged issue skipped | 100% | 100% | same |
+| Triage | unclassified issues | 0 | 0 | same |
+| Steadfast | issues lost with 1 attempt vs 3 | 6 vs 0 (flaky fake) | 0 vs 0 | same |
+| Drafting | forms whose drafts passed the fact check on the first try | n/a | 3/6 (50%) | `eval/results/drafting-2026-11-12.md` |
+| Drafting | forms passed after Steadfast retries | n/a | 6/6 (100%) | same |
+
+Cost: triage 32,350 tokens for one graded run (plus two more for the Steadfast rows), drafting
+15 calls and 10,243 tokens. Commands: `python -m eval.run_triage_eval --live --steadfast` and
+`python -m eval.run_drafting_eval --live` (both need `LLM_PROVIDER=groq` and `GROQ_API_KEY`).
+
+What the live numbers say:
+
+- **The real model beats the keyword floor everywhere**, and the rule-based safety rows stay at
+  100%.
+- **Steadfast on the real model:** Groq's replies were valid JSON every time, so 1 vs 3 attempts
+  lost nothing (the small accuracy gap between those two runs is the model answering a little
+  differently each time, not the retry). The retries that did matter were Groq's free-tier
+  rate limit (8,000 tokens a minute): several calls got HTTP 429 and went through on the
+  next attempt, which is why the triage eval took about 12 minutes.
+- **Drafting:** three forms (job_apply, its variant and the survey) were rejected by the draft
+  checks on their first replies and passed on the fourth attempt; the other three passed first
+  time. The results file does not record which check rejected them. Either way a rejected draft
+  never reaches the form.
+- **Still a small sample** (one run, 29 issues, 6 forms). A second run would move these numbers
+  by a few points.
 
 ## What these numbers mean (and don't)
 
@@ -61,14 +99,5 @@ Commands: `python -m eval.run_detection_eval`, `python -m eval.run_drafting_eval
 offline evals on every push and fail if any number drops below the floors above (the safety
 rows must stay at 100%).
 
-## Not measured yet (need a live run by Boss)
-
-| What | Command | Calls |
-|---|---|---|
-| Triage on Groq, plus Steadfast 1 vs 3 attempts on the real model | `python -m eval.run_triage_eval --live --steadfast` | about 18 |
-| Drafting first-try vs after-retry pass rate on Groq | `python -m eval.run_drafting_eval --live` | 6 to 18 |
-
-Both need `LLM_PROVIDER=groq` and `GROQ_API_KEY` (in `.env` or the shell); with the fake model
-`--live` stops with an error. Each writes its own `eval/results/*-live-*` or adds a "Live"
-section to the drafting report. Add
-the rows to the table above with the model name and date when they exist.
+Live runs are not in CI: they cost API calls and their numbers move a little from run to run.
+With the fake model, `--live` stops with an error.

@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-12",
+  "provider": "groq",
+  "model": "openai/gpt-oss-20b",
+  "tokens": 32350,
+  "metrics": {
+    "issues": 29,
+    "category_accuracy": 0.931,
+    "priority_exact": 0.8621,
+    "priority_within_one": 1.0,
+    "label_f1": 0.8966,
+    "needs_info_precision": 1.0,
+    "needs_info_recall": 0.6667,
+    "duplicate_precision": 1.0,
+    "duplicate_recall": 1.0,
+    "security_escalation_recall": 1.0,
+    "unclassified_rate": 0.0,
+    "already_triaged_skipped": 1.0
+  },
+  "steadfast": {
+    "max_attempts_1": {
+      "unclassified_issues": 0,
+      "unclassified_rate": 0.0,
+      "category_accuracy": 1.0,
+      "simulated_invalid_replies": null
+    },
+    "max_attempts_3": {
+      "unclassified_issues": 0,
+      "unclassified_rate": 0.0,
+      "category_accuracy": 0.9655,
+      "simulated_invalid_replies": null
+    }
+  }
+}

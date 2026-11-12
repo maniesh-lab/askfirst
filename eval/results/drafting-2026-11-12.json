@@ -1,0 +1,118 @@
+{
+  "date": "2026-11-12",
+  "forms": [
+    "contact",
+    "edge_buttons",
+    "edge_two_forms",
+    "job_apply",
+    "job_apply_variant_b",
+    "survey"
+  ],
+  "questions": 8,
+  "planted": {
+    "planted": 112,
+    "caught": 112,
+    "catch_rate": 1.0,
+    "per_kind": {
+      "company": "8/8",
+      "person": "8/8",
+      "year": "8/8",
+      "count": "8/8",
+      "experience": "8/8",
+      "email": "8/8",
+      "url": "8/8",
+      "certificate": "8/8",
+      "school": "8/8",
+      "city": "8/8",
+      "product": "8/8",
+      "sentence_start_name": "8/8",
+      "percent": "8/8",
+      "phone": "8/8"
+    },
+    "missed": []
+  },
+  "clean": {
+    "clean_drafts": 42,
+    "false_alarms": 0,
+    "false_alarm_rate": 0.0,
+    "examples": []
+  },
+  "steadfast": {
+    "forms": 6,
+    "always_invents_left_empty": 6,
+    "invents_once_recovered_after_retry": 6
+  },
+  "live": {
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "tokens": 10243,
+    "calls": 15,
+    "forms": 6,
+    "first_try_pass_rate": 0.5,
+    "pass_rate_after_retries": 1.0,
+    "rows": [
+      {
+        "form": "contact",
+        "fields": 1,
+        "attempts": 1,
+        "outcome": "first_try",
+        "error": null,
+        "answers": {
+          "message": "I have three years of experience as a Support Specialist at Example Labs, where I answer customer emails and chats, write help articles, and translate customer issues into clear bug reports for developers. I\u2019m also comfortable managing spreadsheets and handling phone enquiries from my time as an Office Assistant at Sample Traders. I can help your team by providing patient, user\u2011friendly support, creating clear documentation, and ensuring issues are accurately reported to the development team. Feel free to let me know what specific support needs you have, and I\u2019ll be happy to assist."
+        }
+      },
+      {
+        "form": "edge_buttons",
+        "fields": 1,
+        "attempts": 1,
+        "outcome": "first_try",
+        "error": null,
+        "answers": {
+          "body": "I am a dedicated support specialist with three years of experience helping customers and collaborating with developers. At Example Labs I answer emails and chats, write help articles, and translate issues into clear bug reports. Previously I kept customer records and handled phone enquiries at Sample Traders. I hold a Bachelor of Business Studies from Example College (2021) and am authorised to work. I am eager to bring my patience, writing, and spreadsheet skills to your team starting 1 December 2026."
+        }
+      },
+      {
+        "form": "edge_two_forms",
+        "fields": 1,
+        "attempts": 1,
+        "outcome": "first_try",
+        "error": null,
+        "answers": {
+          "details": "I am currently working as a Support Specialist at Example Labs where I handle customer emails and chats for a small software product. I write help articles and translate customer issues into clear bug reports for the development team. My role relies on strong customer support, writing, bug reporting, spreadsheet management, and patience with confused users."
+        }
+      },
+      {
+        "form": "job_apply",
+        "fields": 2,
+        "attempts": 4,
+        "outcome": "after_retry",
+        "error": null,
+        "answers": {
+          "why_role": "I have spent the last three years as a Support Specialist at Example Labs, where I answered customer emails and chats, wrote help articles, and turned user problems into clear bug reports for developers. This experience has given me strong troubleshooting, documentation, and communication skills that align with the Junior Support Engineer role. I am excited to apply these abilities in a more technical setting, collaborate closely with engineering teams, and help customers resolve issues faster.",
+          "cover_letter": "I am excited to apply for the Junior Support Engineer position. In my current role at Example Labs, I manage customer emails and chats, write help articles, and translate user issues into actionable bug reports. My previous experience as an Office Assistant at Sample Traders sharpened my data\u2011management and customer\u2011service skills. I hold a Bachelor of Business Studies from Example College and am proficient with spreadsheets. I am authorized to work and can start on 1 December 2026. I look forward to bringing my support expertise and clear communication to your team."
+        }
+      },
+      {
+        "form": "job_apply_variant_b",
+        "fields": 2,
+        "attempts": 4,
+        "outcome": "after_retry",
+        "error": null,
+        "answers": {
+          "why_role": "I have spent the last three years as a Support Specialist at Example Labs, answering customer emails and chats, writing help articles, and turning user problems into clear bug reports for developers. I thrive on turning confusion into clarity and enjoy the technical side of support. This role would let me build on those skills, work more closely with engineering, and help customers more directly. I\u2019m excited to grow my expertise in troubleshooting and product knowledge while contributing to a team that values clear communication and rapid problem resolution.",
+          "cover_letter": "I\u2019m a dedicated support professional with three years of experience at Example Labs, where I answered customer emails and chats, authored help articles, and created detailed bug reports for developers. I also kept customer records and handled phone enquiries as an Office Assistant at Sample Traders. I hold a Bachelor of Business Studies from Example College and have strong skills in customer support, writing help articles, bug reporting, spreadsheets, and patience with confused users. I\u2019m eager to transition into a Junior Support Engineer role to deepen my technical knowledge, collaborate closely with engineering, and continue providing excellent customer service. Thank you for considering my application."
+        }
+      },
+      {
+        "form": "survey",
+        "fields": 1,
+        "attempts": 4,
+        "outcome": "after_retry",
+        "error": null,
+        "answers": {
+          "What would make your tools better?": "I would love to see tighter integration between the customer\u2011support inbox and the bug\u2011tracking system so that I can turn an email or chat into a bug report with a single click, preserving context and screenshots. A more powerful search in the help\u2011article database would let me find the right solution faster, especially for new team members. More automation for common responses and a smart template engine would reduce repetitive typing. Finally, a spreadsheet\u2011style view of open tickets and their status would help me keep track of workload and spot trends. These improvements would make my day\u2011to\u2011day work smoother and help customers get faster, clearer support."
+        }
+      }
+    ]
+  }
+}
