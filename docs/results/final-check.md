@@ -43,6 +43,8 @@ container (`ALLOWED_HOSTS=practice-site`).
 
 | Part | Why it isn't done | Steps (also in PROGRESS.md, "Things Boss must do") |
 |---|---|---|
-| Latest scheduled triage run green (Done-when #2) | needs the Groq, Discord and GitHub token secrets (the sandbox repo exists, is seeded with #1-#30, and `TRIAGE_REPO` is set) | Add the three secrets, run `gh workflow run triage.yml -f since=30d`, then check `gh run list --workflow triage.yml --event schedule`; record `docs/results/schedule-proof.md` |
-| Live evals and timings | real Groq calls (cost) | with `LLM_PROVIDER=groq` and `GROQ_API_KEY` set: `python -m eval.run_triage_eval --live --steadfast`, `python -m eval.run_drafting_eval --live`, `python -m scripts.measure_runs --repeat 1` |
-| Discord screenshot of a real digest | needs the Discord webhook | after the first live triage run; `docs/digest.png` is a local preview until then |
+| Latest scheduled triage run green (Done-when #2) | the secrets were set on 2026-11-12, so the next weekday run is the first that can pass | check `gh run list --workflow triage.yml --event schedule`; record `docs/results/schedule-proof.md` |
+
+Done since: the first manual triage run with the digest in Discord
+([live-triage-run.md](live-triage-run.md)), and the live evals and timings on Groq
+([evals.md](evals.md), [run-timings.md](run-timings.md)), all on 2026-11-12.
