@@ -37,7 +37,7 @@ def test_fill_review_edit_approve(cli_env: Settings, site, capsys) -> None:
     assert cli.main(["review", "edit", run_id, "--set", "cover_letter=Short and true."]) == 0
     assert cli.main(["review", "edit", run_id, "--set", "broken"]) == 2
     # A pin from before the edit is refused: the plan changed since the person looked.
-    assert cli.main(["review", "approve", run_id, "--plan-hash", "0000"]) == 1
+    assert cli.main(["review", "approve", run_id, "--plan-hash", "00000000"]) == 1
     assert "changed since you looked" in capsys.readouterr().err
     assert cli.main(["review", "approve", run_id, "--reviewer", "boss"]) == 0
     assert "confirmation: JOB-" in capsys.readouterr().out

@@ -74,6 +74,13 @@ class Target(BaseModel):
         return urljoin(self.url, path)
 
 
+class UnknownForm(KeyError):
+    """The site profile exists but has no form with that name."""
+
+    def __str__(self) -> str:  # KeyError would wrap the message in quotes
+        return str(self.args[0])
+
+
 def load_site(name: str, sites_dir: Path = SITES_DIR) -> SiteProfile:
     path = sites_dir / f"{name}.yaml"
     if not path.is_file():
@@ -88,7 +95,7 @@ def parse_target(text: str, settings: Settings, sites_dir: Path = SITES_DIR) -> 
     site_name, _, form_name = text.removeprefix("site:").partition("/")
     site = load_site(site_name, sites_dir)
     if form_name not in site.forms:
-        raise KeyError(
+        raise UnknownForm(
             f"site {site_name!r} has no form {form_name!r} (has: {', '.join(site.forms)})"
         )
     form = site.forms[form_name]

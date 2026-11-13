@@ -210,8 +210,19 @@ def _print_outcome(settings: Settings, run_id: str, outcome) -> None:
             print(f"  confirmation: {result['confirmation_id']}")
     elif outcome.error:
         print(f"  error: {outcome.error}")
-    if RunIndex.in_data_dir(settings.data_dir).get(run_id).status is RunStatus.NEEDS_HUMAN_CHECK:
+    run = RunIndex.in_data_dir(settings.data_dir).get(run_id)
+    if run is not None and run.status is RunStatus.NEEDS_HUMAN_CHECK:
         print("  the submit may have gone through: check the site before doing anything else")
+
+
+def _exit_code(settings: Settings, run_id: str, outcome) -> int:
+    """1 when the run went wrong. A run that gave up, or whose submit failed or may have gone
+    through, still ends the graph normally, so the run index is the one to ask."""
+    if outcome.status == "failed":
+        return 1
+    run = RunIndex.in_data_dir(settings.data_dir).get(run_id)
+    bad = {RunStatus.FAILED, RunStatus.NEEDS_HUMAN_CHECK}
+    return 1 if run is not None and run.status in bad else 0
 
 
 def _ask_decision(packet) -> object:
@@ -246,7 +257,7 @@ async def _fill(settings: Settings, args: argparse.Namespace) -> int:
                 return 0
             outcome = await runner.resume(run_id, decision)
             _print_outcome(settings, run_id, outcome)
-    return 0 if outcome.status != "failed" else 1
+    return _exit_code(settings, run_id, outcome)
 
 
 def cmd_fill(settings: Settings, args: argparse.Namespace) -> int:
@@ -266,7 +277,7 @@ async def _fill_batch(settings: Settings, args: argparse.Namespace) -> int:
             print(f"row {n}/{len(rows)}")
             run_id, outcome = await runner.start(args.target, args.profile, data=data)
             _print_outcome(settings, run_id, outcome)
-            failed += outcome.status == "failed"
+            failed += _exit_code(settings, run_id, outcome)
     return 1 if failed else 0
 
 
@@ -382,7 +393,7 @@ async def _decide(
             print(f"refused: {exc}", file=sys.stderr)
             return 1
         _print_outcome(settings, run_id, outcome)
-        return 0 if outcome.status != "failed" else 1
+        return _exit_code(settings, run_id, outcome)
 
 
 def cmd_review_approve(settings: Settings, args: argparse.Namespace) -> int:
@@ -416,6 +427,10 @@ def cmd_review_approve(settings: Settings, args: argparse.Namespace) -> int:
     else:
         if args.plan_hash and len(args.run_ids) != 1:
             print("--plan-hash goes with exactly one run id", file=sys.stderr)
+            return 2
+        if args.plan_hash is not None and len(args.plan_hash) < 8:
+            # A prefix this short would match almost any plan.
+            print("--plan-hash needs at least 8 characters", file=sys.stderr)
             return 2
         pins = {rid: args.plan_hash for rid in args.run_ids}
     if not pins:
@@ -472,11 +487,15 @@ def cmd_review_edit(settings: Settings, args: argparse.Namespace) -> int:
 
 
 def cmd_runs_continue(settings: Settings, args: argparse.Namespace) -> int:
+    if RunIndex.in_data_dir(settings.data_dir).get(args.run_id) is None:
+        print(f"no run {args.run_id}", file=sys.stderr)
+        return 2
+
     async def go() -> int:
         async with _runner_for(args.run_id)(settings) as runner:
             outcome = await runner.continue_run(args.run_id)
             _print_outcome(settings, args.run_id, outcome)
-            return 0 if outcome.status != "failed" else 1
+            return _exit_code(settings, args.run_id, outcome)
 
     return asyncio.run(go())
 
@@ -726,7 +745,17 @@ def main(argv: list[str] | None = None) -> int:
     # API keys, the GitHub token, webhook URLs and passwords: masked wherever they turn up.
     register_secrets(settings.secret_values())
     handler: Callable[[Settings, argparse.Namespace], int] = args.handler
-    return handler(settings, args)
+    from app.browser.sites import UnknownForm
+
+    # Typos in a path or form name, or a closed prompt, get one line instead of a traceback.
+    try:
+        return handler(settings, args)
+    except (FileNotFoundError, UnknownForm) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    except EOFError:
+        print("\nno answer (input closed): nothing was decided", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

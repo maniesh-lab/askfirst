@@ -64,3 +64,45 @@ def test_tests_never_read_a_real_env_file(tmp_path, monkeypatch) -> None:
     assert Settings(_env_file=fake_env).llm_provider == "fake"  # the guard's env var wins
     assert get_settings().groq_api_key is None
     assert str(REPO_ROOT_ENV).endswith(".env")
+
+
+@pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        (["detect", "site:nope/x"], "no site profile"),
+        (["plan", "site:practice/nope"], "has no form 'nope'"),
+        (["fill-batch", "site:practice/job_apply", "--data", "missing.csv"], "missing.csv"),
+        (["runs", "continue", "form-20260101-0000-abcd"], "no run form-20260101-0000-abcd"),
+        (["review", "approve", "form-1", "--plan-hash", "ab"], "at least 8 characters"),
+    ],
+)
+def test_cli_typos_get_one_line_not_a_traceback(
+    argv: list[str], message: str, tmp_path: Path, monkeypatch, capsys
+) -> None:
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    assert main(argv) == 2
+    err = capsys.readouterr().err
+    assert message in err and "Traceback" not in err
+
+
+@pytest.mark.parametrize(
+    ("graph_status", "run_status", "code"),
+    [
+        ("done", "done", 0),
+        ("done", "rejected", 0),
+        ("waiting", "waiting_review", 0),
+        ("done", "failed", 1),  # gave up, or the submit failed: the graph still ended normally
+        ("done", "needs_human_check", 1),
+        ("failed", "running", 1),
+    ],
+)
+def test_exit_code_follows_the_run_status(
+    graph_status: str, run_status: str, code: int, tmp_path: Path
+) -> None:
+    from app.cli import _exit_code
+    from app.runtime.graphs import Outcome
+    from app.runtime.runs import RunIndex, RunStatus
+
+    RunIndex.in_data_dir(tmp_path).create("form-1", status=RunStatus(run_status))
+    settings = Settings(_env_file=None, data_dir=tmp_path)
+    assert _exit_code(settings, "form-1", Outcome(status=graph_status)) == code

@@ -61,7 +61,8 @@ class FormRunner:
     def _mark_failed(self, run_id: str, outcome: graphs.Outcome) -> None:
         if outcome.status != "failed":
             return
-        if self.context.index.get(run_id).status is RunStatus.SUBMITTING:
+        run = self.context.index.get(run_id)
+        if run is not None and run.status is RunStatus.SUBMITTING:
             # It failed after the run was claimed for the click: the form may have gone
             # through. Never "failed" (someone might just retry and submit twice).
             self.context.index.set_status(run_id, RunStatus.NEEDS_HUMAN_CHECK)
