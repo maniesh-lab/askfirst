@@ -12,6 +12,10 @@
 - The CLI prints one line instead of a traceback for a host outside `ALLOWED_HOSTS` (`detect`,
   `plan`), a missing file, an unknown form or run, or a closed prompt. `--plan-hash` needs at
   least 8 characters.
+- Interactive triage claims the run before acting on a decision, so two people approving at
+  once can't both comment and close. `runs continue` finishes a run whose apply step crashed
+  and never repeats a write (an unsure one is listed for a person). An edit that drops every
+  proposal now ends the run (it used to stay "waiting").
 - The practice site's login no longer redirects to `/\host` (browsers treat it as another site).
 - Docs: the live drafting numbers count provider calls (Groq rate-limit retries included), not
   only rejected drafts; ARCHITECTURE lists the page text drafting really sends.

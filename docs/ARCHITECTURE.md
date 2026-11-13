@@ -183,6 +183,7 @@ flowchart TD
 | `merge` | One result per issue; **rules win** and every override is audited. | no |
 | `plan_actions`, `policy_gate` | Labels, "please add info" comments, close proposals (never for escalated security issues). The shared policy decides each one. | no |
 | `apply_auto` | Creates missing labels with the rubric's colours, then adds labels (only in `apply-labels` mode). Records the issues it touched. | no |
+| `approval_gate`, `apply_approved` | Interactive only: waits for `review approve`, then claims the run (compare-and-set, so two approvals can't both apply) and runs the approved actions with the token. Each action is audited before and after its GitHub write, so `runs continue` after a crash skips what was done and never repeats an unsure write. | no |
 | `build_digest`, `post_digest` | Markdown, JSON and Discord embeds (split within Discord's limits, at most 4 messages). Posted once per window and digest hash. | no |
 | `write_state` | Adds a comment to the log issue: a short summary plus a hidden `<!-- triage-state {...} -->` block. | no |
 
@@ -234,8 +235,9 @@ unclassified issue, a proposal) or stops the run cleanly; it never guesses and n
 irreversible action. Crashes lose at most one step. A failure after the submit click ends as
 `needs_human_check`, never a second click: at once if the process survives, or via
 `python -m app.cli runs continue <run_id>` if it was killed (until then the run shows
-`submitting`). The full table, with the test behind each
-row, is in [failure-handling.md](failure-handling.md).
+`submitting`). Triage applies approved actions the same way: claimed first, and a crashed
+apply is finished by `runs continue` without repeating a write. The full table, with the test
+behind each row, is in [failure-handling.md](failure-handling.md).
 
 ## 7. Safety and ethics
 
