@@ -61,8 +61,8 @@ jobs:
         run: pytest tests/eval --no-cov
       - name: Coverage summary
         run: coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
-      # The README's coverage badge. Without the CODECOV_TOKEN secret the upload fails
-      # quietly and the job stays green.
+      # The README's coverage badge. The token is optional: Codecov takes tokenless uploads
+      # from public repos, so an empty secret is fine.
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7.1.1
         with:
