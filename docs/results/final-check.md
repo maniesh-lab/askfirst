@@ -14,6 +14,7 @@ This is the local part of the final check. The live parts are all done now; see 
 | Lint and format | `ruff check .`, `ruff format --check .` | clean (101 files) |
 | Every test | `pytest` | **206 passed**, 0 failed, coverage **92%** of `app/` |
 | Docker + compose, the whole loop | `./scripts/compose_smoke.sh` | **passed** in 25 s (images cached; see below) |
+| Re-run, 2026-11-13 (after the live steps and the redirect fix) | `pytest` | **225 passed** in 66 s, coverage **92%** of `app/` |
 | CI on GitHub | the CI workflow on the Phase 10 pushes and earlier ones | green (lint, unit, browser, docker) |
 
 What the compose run proves (Done-when #1 in miniature, on our practice site in Docker):
