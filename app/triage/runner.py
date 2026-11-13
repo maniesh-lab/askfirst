@@ -10,15 +10,16 @@ import structlog
 
 from app.config import Settings
 from app.runtime import graphs
-from app.runtime.approval import Decision
+from app.runtime.approval import Decision, StaleDecision
 from app.runtime.audit import AuditLog
 from app.runtime.checkpoint import open_checkpointer
 from app.runtime.llm import LLM, make_llm
 from app.runtime.logging import bind_run, register_secrets
 from app.runtime.notify import Notifier, make_notifier
 from app.runtime.runs import RunIndex, RunStatus, new_run_id
+from app.triage.actions import UNSURE
 from app.triage.github import GitHubClient, IssuesAPI
-from app.triage.graph import ClaimLost, TriageContext, build_graph, initial_state
+from app.triage.graph import TriageContext, build_graph, initial_state
 from app.triage.rubric import Rubric
 
 log = structlog.get_logger(__name__)
@@ -42,13 +43,36 @@ class TriageRunner:
         return run_id, outcome
 
     async def resume(self, run_id: str, decision: Decision) -> graphs.Outcome:
-        with bind_run(run_id, module="triage"):
-            outcome = await graphs.resume(self.graph, run_id, decision, context=self.context)
+        """Act on a person's decision, after claiming the run.
+
+        The claim is a compare-and-set (waiting -> submitting), taken before the graph is
+        touched: of two people deciding at once, the second changes nothing, not even the
+        checkpoint. Form runs do the same before their click.
+        """
+        index = self.context.index
+        if not index.claim(run_id, RunStatus.WAITING_REVIEW, RunStatus.SUBMITTING):
+            self.context.audit.record(
+                run_id,
+                "system",
+                "claim_lost",
+                outcome="refused",
+                reason="the run was not waiting (another decision?)",
+            )
+            return graphs.Outcome(
+                "failed", error=f"ClaimLost: {run_id} is already being handled by another decision"
+            )
+        try:
+            with bind_run(run_id, module="triage"):
+                outcome = await graphs.resume(self.graph, run_id, decision, context=self.context)
+        except StaleDecision, LookupError:
+            index.claim(run_id, RunStatus.SUBMITTING, RunStatus.WAITING_REVIEW)  # hand it back
+            raise
         self._finish(run_id, outcome)
         return outcome
 
     async def continue_run(self, run_id: str) -> graphs.Outcome:
-        # The one path allowed to take over a run whose apply step crashed.
+        """Carry on a run that stopped mid-way. Only once its process has stopped: a run still
+        applying looks the same as one that was killed while applying."""
         self.context.continuing = True
         try:
             with bind_run(run_id, module="triage"):
@@ -59,19 +83,23 @@ class TriageRunner:
         return outcome
 
     def _finish(self, run_id: str, outcome: graphs.Outcome) -> None:
-        if outcome.status == "failed" and (outcome.error or "").startswith(
-            f"{ClaimLost.__name__}:"
-        ):
-            return  # the run belongs to the other approval; its status is not ours to change
+        index = self.context.index
         if outcome.status == "failed":
-            self.context.index.set_status(run_id, RunStatus.FAILED)
+            index.set_status(run_id, RunStatus.FAILED)
             self.context.audit.record(
                 run_id, "system", "run_failed", outcome="failed", error=outcome.error
             )
-        elif (
-            outcome.status == "done" and self.context.index.get(run_id).status == RunStatus.RUNNING
-        ):
-            self.context.index.set_status(run_id, RunStatus.DONE)
+            return
+        run = index.get(run_id)
+        if run is None:
+            return
+        if outcome.status == "waiting":
+            # Back at the gate (an edit, or a decision the gate refused): it waits again.
+            index.claim(run_id, RunStatus.SUBMITTING, RunStatus.WAITING_REVIEW)
+        elif run.status in (RunStatus.RUNNING, RunStatus.SUBMITTING, RunStatus.FAILED):
+            # FAILED too: a run finished by `runs continue` is done, not failed.
+            unsure = any(a.get("error") == UNSURE for a in outcome.values.get("actions", []))
+            index.set_status(run_id, RunStatus.NEEDS_HUMAN_CHECK if unsure else RunStatus.DONE)
 
 
 @asynccontextmanager

@@ -122,6 +122,7 @@ class Digest(BaseModel):
     proposals: list[PlannedAction] = Field(default_factory=list)
     applied: list[PlannedAction] = Field(default_factory=list)
     failed: list[PlannedAction] = Field(default_factory=list)
+    unsure: list[PlannedAction] = Field(default_factory=list)
     unclassified: list[TriageResult] = Field(default_factory=list)
     actions_url: str | None = None
     tokens: int = 0

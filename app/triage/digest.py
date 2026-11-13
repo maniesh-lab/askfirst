@@ -14,7 +14,7 @@ from collections import Counter
 from typing import Any
 
 from app.runtime.hashing import stable_hash
-from app.triage.actions import NOT_APPLIED, WAITING_VERDICTS
+from app.triage.actions import NOT_APPLIED, UNSURE, WAITING_VERDICTS
 from app.triage.models import Digest, DigestWindow, PlannedAction, TriageResult
 
 MAX_EMBEDS = 10
@@ -67,7 +67,10 @@ def build_digest(
             a for a in actions if a.verdict in WAITING_VERDICTS and not a.applied and not a.error
         ],
         applied=[a for a in actions if a.applied],
-        failed=[a for a in actions if a.error and not a.applied and a.error != NOT_APPLIED],
+        failed=[
+            a for a in actions if a.error and not a.applied and a.error not in (NOT_APPLIED, UNSURE)
+        ],
+        unsure=[a for a in actions if a.error == UNSURE and not a.applied],
         unclassified=[r for r in live if r.unclassified],
         actions_url=actions_url,
         tokens=tokens,
@@ -136,6 +139,8 @@ def sections(d: Digest) -> list[tuple[str, list[str]]]:
         out.append(("✅ Applied automatically", [a.summary for a in d.applied]))
     if d.failed:
         out.append(("⚠️ Failed (not applied)", [f"{a.summary}: {a.error}" for a in d.failed]))
+    if d.unsure:
+        out.append(("❓ Maybe applied (check by hand)", [a.summary for a in d.unsure]))
     if d.unclassified:
         out.append(("🤷 Unclassified (needs a human)", [_issue_line(r) for r in d.unclassified]))
     return out

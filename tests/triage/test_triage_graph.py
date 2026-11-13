@@ -7,7 +7,7 @@ import pytest
 from app import cli
 from app.config import Settings, get_settings
 from app.runtime import graphs
-from app.runtime.approval import Decision
+from app.runtime.approval import Decision, StaleDecision
 from app.runtime.audit import AuditLog
 from app.runtime.notify import FakeNotifier, NotifyError
 from app.runtime.runs import RunIndex, RunPaths, RunStatus
@@ -270,7 +270,7 @@ async def waiting_run(runner):
     return run_id, out.packet
 
 
-@pytest.mark.parametrize("choice", ["approve", "reject"])
+@pytest.mark.parametrize("choice", ["approve", "reject", "edit"])
 async def test_second_of_two_racing_decisions_changes_nothing(tmp_path: Path, choice) -> None:
     gh, notifier = sandbox_github(), FakeNotifier()
     async with open_triage_runner(
@@ -281,15 +281,62 @@ async def test_second_of_two_racing_decisions_changes_nothing(tmp_path: Path, ch
         # Another process approved the same run a moment earlier and holds the claim.
         index = RunIndex.in_data_dir(tmp_path)
         assert index.claim(run_id, RunStatus.WAITING_REVIEW, RunStatus.SUBMITTING)
-        reason = "not now" if choice == "reject" else None
+        extra = {"reject": {"reason": "not now"}, "edit": {"edits": {"drop": "close-dup-10"}}}
         out = await runner.resume(
             run_id,
-            Decision(choice=choice, reviewer="boss", reason=reason, plan_hash=packet.plan_hash),
+            Decision(
+                choice=choice, reviewer="boss", plan_hash=packet.plan_hash, **extra.get(choice, {})
+            ),
         )
+        # The graph was never touched: it still waits on the same plan.
+        still = await graphs.waiting_packet(runner.graph, run_id)
     assert out.status == "failed" and out.error.startswith("ClaimLost:")
     assert gh.writes == writes_before and notifier.sent == sent_before  # no actions, no digest
     assert index.get(run_id).status is RunStatus.SUBMITTING  # still the other approval's
-    assert AuditLog(tmp_path).count(run_id, "claim_lost") == 1
+    assert still is not None and still.plan_hash == packet.plan_hash
+    audit = AuditLog(tmp_path)
+    assert audit.count(run_id, "claim_lost") == 1 and audit.count(run_id, "decision") == 0
+
+
+async def test_a_stale_decision_hands_the_claim_back(tmp_path: Path) -> None:
+    async with open_triage_runner(
+        settings(tmp_path),
+        github=sandbox_github(),
+        notifier=FakeNotifier(),
+        durable=False,
+        now=lambda: NOW,
+    ) as runner:
+        run_id, packet = await waiting_run(runner)
+        with pytest.raises(StaleDecision):
+            await runner.resume(run_id, Decision(choice="approve", reviewer="boss", plan_hash="x"))
+        assert RunIndex.in_data_dir(tmp_path).get(run_id).status is RunStatus.WAITING_REVIEW
+        done = await runner.resume(
+            run_id, Decision(choice="approve", reviewer="boss", plan_hash=packet.plan_hash)
+        )
+    assert done.status == "done", done.error
+
+
+async def test_a_continued_run_ends_done_not_failed(tmp_path: Path) -> None:
+    class StateWriteFailsOnce(type(sandbox_github())):
+        fail = True
+
+        async def create_issue(self, repo, title, body, labels):
+            if self.fail:  # the log issue, in write_state, after the digest went out
+                self.fail = False
+                raise RuntimeError("process died")
+            return await super().create_issue(repo, title, body, labels)
+
+    gh = StateWriteFailsOnce(sandbox_github().issues.values())
+    index = RunIndex.in_data_dir(tmp_path)
+    async with open_triage_runner(
+        settings(tmp_path), github=gh, notifier=FakeNotifier(), durable=False, now=lambda: NOW
+    ) as runner:
+        run_id, out = await runner.start("o/sandbox", since="60d")
+        assert out.status == "failed" and index.get(run_id).status is RunStatus.FAILED
+        done = await runner.continue_run(run_id)
+    assert done.status == "done", done.error
+    assert index.get(run_id).status is RunStatus.DONE
+    assert (await last_state(gh, "o/sandbox"))[1].run_id == run_id
 
 
 @pytest.mark.parametrize("left_as", [RunStatus.FAILED, RunStatus.SUBMITTING])
@@ -317,8 +364,9 @@ async def test_runs_continue_after_a_crash_never_repeats_a_write(tmp_path: Path,
         assert before > 0  # some actions landed before the crash
         if left_as is RunStatus.SUBMITTING:  # killed outright: nothing marked it failed
             index.set_status(run_id, RunStatus.SUBMITTING)
-        with pytest.raises(LookupError):  # approving again is refused: it isn't waiting
-            await runner.resume(run_id, approve)
+        again = await runner.resume(run_id, approve)  # refused: the run isn't waiting
+        assert again.status == "failed" and again.error.startswith("ClaimLost:")
+        assert len(gh.writes) == before
         done = await runner.continue_run(run_id)
     assert done.status == "done", done.error
     assert len(gh.writes) == len({repr(w) for w in gh.writes})  # nothing written twice
@@ -327,10 +375,12 @@ async def test_runs_continue_after_a_crash_never_repeats_a_write(tmp_path: Path,
     assert not unsure["applied"] and "check the issue by hand" in unsure["error"]
     applied = [a for a in done.values["actions"] if a["verdict"] == "needs_human"]
     assert all(a["applied"] for a in applied if a["id"] != "comment-3")
-    assert audit.count(run_id, "claim_taken_over") == 1
     assert audit.count(run_id, "action_unsure") == 1
     assert audit.count(run_id, "decision", choice="approve") == 1
-    assert index.get(run_id).status is RunStatus.DONE and done.values["posted"]
+    # One write may or may not have landed: a person must look, as after a form submit crash.
+    assert index.get(run_id).status is RunStatus.NEEDS_HUMAN_CHECK and done.values["posted"]
+    assert [a["id"] for a in done.values["digest"]["unsure"]] == ["comment-3"]
+    assert not [a for a in done.values["digest"]["failed"] if a["id"] == "comment-3"]
 
 
 async def test_dropping_every_proposal_finishes_the_run(tmp_path: Path) -> None:

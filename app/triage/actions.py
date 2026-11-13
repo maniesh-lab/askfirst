@@ -35,6 +35,8 @@ KIND_RISK = {
 
 # The error text on an action skipped because the run may not write (dry run, read-only).
 NOT_APPLIED = "not applied (dry run / read-only)"
+# An action a crashed try started but never recorded: its write may or may not have landed.
+UNSURE = "may have been applied before a crash: check the issue by hand"
 # Verdicts that leave an action for a person to decide (now at the gate, or later by hand).
 WAITING_VERDICTS = {Verdict.NEEDS_HUMAN.value, Verdict.DEFER.value}
 
