@@ -256,10 +256,10 @@ row, is in [failure-handling.md](failure-handling.md).
   logs, the audit log, review files, errors and the checkpoint database (tested). The GitHub
   token is a fine-grained PAT with Issues read/write and Metadata read on the one target repo.
 - **Where data goes.** Form drafting sends the LLM provider only the free-text questions, the
-  page title and the profile's name, work, education and skills (no contact details, address or
-  passwords). Triage sends each issue's title and body (also for private repos) to the LLM
-  provider and puts titles and links in the Discord digest; only the public workflow outputs
-  (log, step summary, artifact) are counts-only for a private repo.
+  page's title, headings and intro text, and the profile's name, work, education and skills (no
+  contact details, address or passwords). Triage sends each issue's title and body (also for
+  private repos) to the LLM provider and puts titles and links in the Discord digest; only the
+  public workflow outputs (log, step summary, artifact) are counts-only for a private repo.
 
 ## 8. Design decisions
 

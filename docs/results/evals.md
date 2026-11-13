@@ -50,7 +50,7 @@ Model `openai/gpt-oss-20b` on Groq's free tier, same 30 sandbox issues and 6 for
 | Triage | already-triaged issue skipped | 100% | 100% | same |
 | Triage | unclassified issues | 0 | 0 | same |
 | Steadfast | issues lost with 1 attempt vs 3 | 6 vs 0 (flaky fake) | 0 vs 0 | same |
-| Drafting | forms whose drafts passed the fact check on the first try | n/a | 3/6 (50%) | `eval/results/drafting-2026-11-12.md` |
+| Drafting | forms drafted in one provider call | n/a | 3/6 (50%) | `eval/results/drafting-2026-11-12.md` |
 | Drafting | forms passed after Steadfast retries | n/a | 6/6 (100%) | same |
 
 Cost: triage 32,350 tokens for one graded run (plus two more for the Steadfast rows), drafting
@@ -66,10 +66,11 @@ What the live numbers say:
   differently each time, not the retry). The retries that did matter were Groq's free-tier
   rate limit (8,000 tokens a minute): several calls got HTTP 429 and went through on the
   next attempt, which is why the triage eval took about 12 minutes.
-- **Drafting:** three forms (job_apply, its variant and the survey) were rejected by the draft
-  checks on their first replies and passed on the fourth attempt; the other three passed first
-  time. The results file does not record which check rejected them. Either way a rejected draft
-  never reaches the form.
+- **Drafting:** three forms (job_apply, its variant and the survey) took four provider calls
+  each; the other three took one. Drafting allows at most three tries at a valid draft, so at
+  least one of those calls was a retry after Groq's rate limit (HTTP 429), not a rejected draft.
+  The results file counts calls only, so it can't say how many were draft rejections. Either
+  way a rejected draft never reaches the form.
 - **Still a small sample** (one run, 29 issues, 6 forms). A second run would move these numbers
   by a few points.
 

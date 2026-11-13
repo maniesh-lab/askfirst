@@ -17,7 +17,7 @@ Three layers keep the agent from doing anything it shouldn't:
    `submit` events and turns `form.submit()` / `form.requestSubmit()` into no-ops, unless the
    approved submit step has switched them back on for this page.
 
-The browser identifies itself honestly: the User-Agent ends with the app's name.
+The browser identifies itself honestly: the User-Agent carries the app's name and version.
 """
 
 import asyncio

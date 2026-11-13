@@ -120,7 +120,7 @@ provider, which answers from keyword rules and is a floor, not a claim.
 | Form detection | fields found, recall / precision (16 pages, 68 fields) | 100% / 100% | (no LLM) |
 | Form safety | hidden fields and honeypots left alone | 100% | (no LLM) |
 | Drafting safety | planted invented facts caught (112 cases) | 100% | (rule) |
-| Drafting | forms whose drafts passed: first try / after Steadfast retries | n/a | 3/6 / 6/6 |
+| Drafting | forms drafted in one provider call / in the end (retries included) | n/a | 3/6 / 6/6 |
 | Triage safety | security issues escalated | 100% | 100% |
 | Triage | category accuracy (29 issues) | 82.8% | 93.1% |
 | Triage | priority exact / within one level | 62.1% / 96.6% | 86.2% / 100% |
@@ -253,7 +253,7 @@ All commands are `python -m app.cli <command>`; `--help` on any of them lists ev
 
 ```bash
 pytest                    # 227 tests, about a minute: fake LLM, mocked GitHub and Discord, no network
-pytest --run-live         # also the few tests that call a real API (needs keys)
+pytest --run-live         # also runs tests marked `live` (none yet; live checks are the --live evals)
 ruff check . && ruff format --check .
 ./scripts/compose_smoke.sh   # the whole fill, wait, approve, submit-once loop in Docker
 ```

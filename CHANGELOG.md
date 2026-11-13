@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `detect` and `plan` print "refused: ..." and exit 2 for a host outside `ALLOWED_HOSTS`, instead
+  of crashing with a traceback (`fill` already did this).
+- Docs: the live drafting numbers count provider calls (Groq rate-limit retries included), not
+  only rejected drafts; ARCHITECTURE lists the page text drafting really sends.
+
 ## 1.0.0 (2026-11-13)
 
 First release: two agents on one shared runtime, both proven live.
