@@ -5,11 +5,13 @@ Each run adds one comment: a short human summary plus a hidden machine block:
     <!-- triage-state {"run_id": "...", "window_start": "...", "window_end": "...",
                        "digest_hash": "...", "touched": {"12": "<updated_at>"}} -->
 
-The next run reads the latest block: its window starts at the last `window_end` (or 7 days back
-the first time). `touched` lists the issues the run changed itself, so the next run can tell
-the bot's own edits from a person's. A run whose window start and digest hash match the last
-block posts nothing (it already did), unless `--force`. Read-only targets keep no state and
-use a fixed window.
+The next run reads the latest block written by someone with write access to the repo (the
+bot posts with its owner's token). Anyone can comment on a public issue, and an HTML comment
+doesn't show on the page, so a stranger's block could otherwise hide issues or stop the bot.
+Its window starts at the last `window_end` (or 7 days back the first time). `touched` lists
+the issues the run changed itself, so the next run can tell the bot's own edits from a
+person's. A run whose window start and digest hash match the last block posts nothing (it
+already did), unless `--force`. Read-only targets keep no state and use a fixed window.
 
 Why an issue: the bot runs on GitHub Actions, which has no disk that survives between runs. The
 repo it already has access to is the simplest place that does.
@@ -17,15 +19,23 @@ repo it already has access to is the simplest place that does.
 
 import json
 import re
+from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.triage.github import IssuesAPI
 
 LOG_TITLE = "Triage log (bot)"
 LOG_LABEL = "triage-log"
 STATE_RE = re.compile(r"<!--\s*triage-state\s+(\{.*?\})\s*-->", re.DOTALL)
+# Comment authors whose state blocks we trust: people who can already write to the repo.
+TRUSTED_AUTHORS = {"OWNER", "MEMBER", "COLLABORATOR"}
+
+
+def _check_time(value: str) -> str:
+    datetime.fromisoformat(value.replace("Z", "+00:00"))  # raises ValueError if unreadable
+    return value
 
 
 class RunState(BaseModel):
@@ -37,6 +47,17 @@ class RunState(BaseModel):
     # writes land after `window_end`, so without this the next run would see "updated" issues
     # and triage them again.
     touched: dict[str, str] = Field(default_factory=dict)
+
+    # A block with a broken date is ignored (parse_state returns None), so it can't crash runs.
+    @field_validator("window_start", "window_end")
+    @classmethod
+    def _times(cls, value: str) -> str:
+        return _check_time(value)
+
+    @field_validator("touched")
+    @classmethod
+    def _touched_times(cls, value: dict[str, str]) -> dict[str, str]:
+        return {number: _check_time(at) for number, at in value.items()}
 
 
 def parse_state(body: str) -> RunState | None:
@@ -64,6 +85,8 @@ async def last_state(github: IssuesAPI, repo: str) -> tuple[int | None, RunState
     if log_issue is None:
         return None, None
     for comment in reversed(await github.list_comments(repo, log_issue["number"])):
+        if comment.get("author_association") not in TRUSTED_AUTHORS:
+            continue
         parsed = parse_state(comment.get("body", ""))
         if parsed is not None:
             return log_issue["number"], parsed

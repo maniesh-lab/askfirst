@@ -288,6 +288,8 @@ class FakeGitHub:
             "id": sum(len(c) for c in self.comments.values()) + 1,
             "body": body,
             "created_at": datetime.now().astimezone().isoformat(),
+            # The bot writes with its owner's token, as on the real repo.
+            "author_association": "OWNER",
         }
         self.comments.setdefault(number, []).append(comment)
         return comment

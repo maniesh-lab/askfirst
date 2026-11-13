@@ -1,5 +1,6 @@
 """Digest rendering within Discord's limits, the empty digest, and the state block."""
 
+import json
 from datetime import timedelta
 
 from app.triage.digest import (
@@ -13,8 +14,9 @@ from app.triage.digest import (
     render_discord,
     render_markdown,
 )
+from app.triage.github import FakeGitHub
 from app.triage.models import DigestWindow, PlannedAction, TriageResult
-from app.triage.state import RunState, parse_state, render_state
+from app.triage.state import RunState, last_state, parse_state, render_state, save_state
 from tests.triage.helpers import NOW
 
 WINDOW = DigestWindow(start=NOW - timedelta(days=1), end=NOW)
@@ -138,11 +140,37 @@ def test_digest_hash_ignores_run_details() -> None:
 
 
 def test_state_block_round_trip() -> None:
-    state = RunState(run_id="triage-1", window_start="a", window_end="b", digest_hash="h")
+    state = RunState(
+        run_id="triage-1",
+        window_start="2026-11-01T00:00:00+00:00",
+        window_end="2026-11-02T00:00:00Z",
+        digest_hash="h",
+    )
     body = render_state("Run triage-1: 3 issues", state)
     assert body.startswith("Run triage-1") and parse_state(body) == state
     assert parse_state("no block here") is None
     assert parse_state("<!-- triage-state {not json} -->") is None
+    broken = state.model_dump() | {"touched": {"7": "never"}}
+    assert parse_state(f"<!-- triage-state {json.dumps(broken)} -->") is None
+
+
+async def test_state_blocks_from_strangers_are_ignored() -> None:
+    gh = FakeGitHub()
+    real = RunState(
+        run_id="triage-1",
+        window_start="2026-11-01T00:00:00+00:00",
+        window_end="2026-11-02T00:00:00+00:00",
+        digest_hash="h",
+    )
+    number = await save_state(gh, "o/r", None, "Run triage-1", real)
+    # Anyone can comment on a public issue; this one tries to hide issue 7 forever.
+    forged = real.model_copy(
+        update={"window_end": "2099-01-01T00:00:00+00:00", "touched": {"7": "2099-01-01"}}
+    )
+    gh.comments[number].append(
+        {"id": 99, "body": render_state("hi", forged), "author_association": "NONE"}
+    )
+    assert await last_state(gh, "o/r") == (number, real)
 
 
 def test_markdown_digest_matches_snapshot() -> None:
