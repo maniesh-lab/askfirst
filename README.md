@@ -252,7 +252,7 @@ All commands are `python -m app.cli <command>`; `--help` on any of them lists ev
 ## Tests and CI
 
 ```bash
-pytest                    # 225 tests, about a minute: fake LLM, mocked GitHub and Discord, no network
+pytest                    # 227 tests, about a minute: fake LLM, mocked GitHub and Discord, no network
 pytest --run-live         # also the few tests that call a real API (needs keys)
 ruff check . && ruff format --check .
 ./scripts/compose_smoke.sh   # the whole fill, wait, approve, submit-once loop in Docker
