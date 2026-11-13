@@ -4,8 +4,15 @@
 
 ### Fixed
 
-- `detect` and `plan` print "refused: ..." and exit 2 for a host outside `ALLOWED_HOSTS`, instead
-  of crashing with a traceback (`fill` already did this).
+- Triage only trusts run-state comments from people who can write to the repo. Before, anyone
+  could post a hidden state block on the public log issue and hide issues from every later run.
+- A triaged security issue that goes stale stays escalated, so it never gets a close proposal.
+- `fill`, `review approve`, `fill-batch` and `runs continue` exit 1 when the run gave up, the
+  submit failed, or it may have gone through (they exited 0 before).
+- The CLI prints one line instead of a traceback for a host outside `ALLOWED_HOSTS` (`detect`,
+  `plan`), a missing file, an unknown form or run, or a closed prompt. `--plan-hash` needs at
+  least 8 characters.
+- The practice site's login no longer redirects to `/\host` (browsers treat it as another site).
 - Docs: the live drafting numbers count provider calls (Groq rate-limit retries included), not
   only rejected drafts; ARCHITECTURE lists the page text drafting really sends.
 

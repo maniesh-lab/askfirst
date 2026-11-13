@@ -41,3 +41,9 @@ happens because of a failure.
 - GitHub can delay scheduled workflow runs, or skip them when its queue is busy. The triage
   window always starts at the last saved `window_end`, so a late or skipped run only makes the
   next digest cover a longer window.
+- Two people approving the same interactive triage run at the same moment can both apply its
+  actions (duplicate comments, two digests). Form runs claim the run before the click; triage
+  runs don't yet, because a claim would also stop `runs continue` from finishing a run that
+  crashed mid-apply. Cron runs are unattended and never wait for approval, so they can't hit it.
+- If a cron run and an interactive triage run overlap, whichever saves its state last wins, even
+  with an older window. The next run then covers a longer window, which is safe, just slower.
