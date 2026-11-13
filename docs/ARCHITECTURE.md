@@ -183,7 +183,7 @@ flowchart TD
 | `merge` | One result per issue; **rules win** and every override is audited. | no |
 | `plan_actions`, `policy_gate` | Labels, "please add info" comments, close proposals (never for escalated security issues). The shared policy decides each one. | no |
 | `apply_auto` | Creates missing labels with the rubric's colours, then adds labels (only in `apply-labels` mode). Records the issues it touched. | no |
-| `approval_gate`, `apply_approved` | Interactive only: waits for `review approve`, then claims the run (compare-and-set, so two approvals can't both apply) and runs the approved actions with the token. Each action is audited before and after its GitHub write, so `runs continue` after a crash skips what was done and never repeats an unsure write. | no |
+| `approval_gate`, `apply_approved` | Interactive only: waits for `review approve`. The runner claims the run before resuming the graph (compare-and-set, so of two decisions only one reaches it), then the approved actions run with the token. Each action is audited before and after its GitHub write, so `runs continue` after a crash skips what was done and never repeats an unsure write. | no |
 | `build_digest`, `post_digest` | Markdown, JSON and Discord embeds (split within Discord's limits, at most 4 messages). Posted once per window and digest hash. | no |
 | `write_state` | Adds a comment to the log issue: a short summary plus a hidden `<!-- triage-state {...} -->` block. | no |
 
