@@ -27,7 +27,7 @@ def test_cli_help_exits_zero() -> None:
 
 def test_cli_version_prints_name(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["version"]) == 0
-    assert capsys.readouterr().out.startswith("askfirst 0.1.0")
+    assert capsys.readouterr().out.startswith("askfirst 1.0.0")
 
 
 def test_settings_defaults() -> None:
