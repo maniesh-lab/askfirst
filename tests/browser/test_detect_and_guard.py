@@ -92,6 +92,18 @@ async def test_goto_refuses_hosts_not_allowed(tmp_path: Path) -> None:
     assert AuditLog(tmp_path).count("form-test", "blocked_navigation") == 2
 
 
+@pytest.mark.parametrize("command", ["detect", "plan"])
+def test_cli_refuses_hosts_not_allowed_without_a_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], command: str
+) -> None:
+    from app import cli
+
+    settings = Settings(_env_file=None, data_dir=tmp_path, allowed_hosts="127.0.0.1")
+    args = cli.build_parser().parse_args([command, "https://example.org/"])
+    assert args.handler(settings, args) == 2
+    assert "refused: 'example.org' is not in ALLOWED_HOSTS" in capsys.readouterr().err
+
+
 class _Redirector(BaseHTTPRequestHandler):
     """/off -> another host, /same -> /landed on this host, /landed -> a plain page."""
 

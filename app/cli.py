@@ -103,6 +103,17 @@ async def _detect_target(settings: Settings, target_text: str) -> tuple[FormStep
     return step, target
 
 
+def _detect_or_refuse(settings: Settings, target_text: str) -> tuple[FormStep, object] | None:
+    """Detect, or print why the host was refused (a refusal is an answer, not a crash)."""
+    from app.browser.session import HostNotAllowed
+
+    try:
+        return asyncio.run(_detect_target(settings, target_text))
+    except HostNotAllowed as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return None
+
+
 def _write_json(settings: Settings, folder: str, name: str, data: object) -> str:
     out = settings.data_dir / folder
     out.mkdir(parents=True, exist_ok=True)
@@ -118,7 +129,10 @@ def _slug(text: str) -> str:
 
 
 def cmd_detect(settings: Settings, args: argparse.Namespace) -> int:
-    step, _target = asyncio.run(_detect_target(settings, args.target))
+    found = _detect_or_refuse(settings, args.target)
+    if found is None:
+        return 2
+    step, _target = found
     rows = [
         [
             f.key,
@@ -145,7 +159,10 @@ def cmd_detect(settings: Settings, args: argparse.Namespace) -> int:
 def cmd_plan(settings: Settings, args: argparse.Namespace) -> int:
     from app.browser.mapping import Profile, map_step
 
-    step, target = asyncio.run(_detect_target(settings, args.target))
+    found = _detect_or_refuse(settings, args.target)
+    if found is None:
+        return 2
+    step, target = found
     profile = Profile.load(args.profile)
     overrides = target.form.overrides if target.form else {}
     mappings = map_step(step, profile, overrides=overrides)
