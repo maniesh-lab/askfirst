@@ -42,8 +42,10 @@ def offline_settings(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyP
         yield
         return
     from app.config import Settings, get_settings
+    from practice_site.config import PracticeSettings
 
     monkeypatch.setitem(Settings.model_config, "env_file", None)
+    monkeypatch.setitem(PracticeSettings.model_config, "env_file", None)
     monkeypatch.setenv("LLM_PROVIDER", "fake")
     for key in REAL_SERVICE_KEYS:
         monkeypatch.delenv(key, raising=False)
