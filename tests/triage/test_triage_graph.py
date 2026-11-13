@@ -264,6 +264,93 @@ async def test_interactive_reject_runs_nothing(tmp_path: Path) -> None:
     assert all(a["verdict"] in ("rejected", "defer", "auto") for a in done.values["actions"])
 
 
+async def waiting_run(runner):
+    run_id, out = await runner.start("o/sandbox", since="60d", mode="interactive")
+    assert out.status == "waiting", out.error
+    return run_id, out.packet
+
+
+@pytest.mark.parametrize("choice", ["approve", "reject"])
+async def test_second_of_two_racing_decisions_changes_nothing(tmp_path: Path, choice) -> None:
+    gh, notifier = sandbox_github(), FakeNotifier()
+    async with open_triage_runner(
+        settings(tmp_path), github=gh, notifier=notifier, durable=False, now=lambda: NOW
+    ) as runner:
+        run_id, packet = await waiting_run(runner)
+        writes_before, sent_before = list(gh.writes), list(notifier.sent)
+        # Another process approved the same run a moment earlier and holds the claim.
+        index = RunIndex.in_data_dir(tmp_path)
+        assert index.claim(run_id, RunStatus.WAITING_REVIEW, RunStatus.SUBMITTING)
+        reason = "not now" if choice == "reject" else None
+        out = await runner.resume(
+            run_id,
+            Decision(choice=choice, reviewer="boss", reason=reason, plan_hash=packet.plan_hash),
+        )
+    assert out.status == "failed" and out.error.startswith("ClaimLost:")
+    assert gh.writes == writes_before and notifier.sent == sent_before  # no actions, no digest
+    assert index.get(run_id).status is RunStatus.SUBMITTING  # still the other approval's
+    assert AuditLog(tmp_path).count(run_id, "claim_lost") == 1
+
+
+@pytest.mark.parametrize("left_as", [RunStatus.FAILED, RunStatus.SUBMITTING])
+async def test_runs_continue_after_a_crash_never_repeats_a_write(tmp_path: Path, left_as) -> None:
+    class CrashOnce(type(sandbox_github())):
+        crash = True
+
+        async def create_comment(self, repo, number, body):
+            if number == 3 and self.crash:  # the needs-info comment, mid-way through the list
+                self.crash = False
+                raise RuntimeError("process died")
+            return await super().create_comment(repo, number, body)
+
+    gh, notifier = CrashOnce(sandbox_github().issues.values()), FakeNotifier()
+    audit, index = AuditLog(tmp_path), RunIndex.in_data_dir(tmp_path)
+    async with open_triage_runner(
+        settings(tmp_path), github=gh, notifier=notifier, durable=False, now=lambda: NOW
+    ) as runner:
+        run_id, packet = await waiting_run(runner)
+        approve = Decision(choice="approve", reviewer="boss", plan_hash=packet.plan_hash)
+        crashed = await runner.resume(run_id, approve)
+        assert crashed.status == "failed" and "process died" in crashed.error
+        assert index.get(run_id).status is RunStatus.FAILED
+        before = len(gh.writes)
+        assert before > 0  # some actions landed before the crash
+        if left_as is RunStatus.SUBMITTING:  # killed outright: nothing marked it failed
+            index.set_status(run_id, RunStatus.SUBMITTING)
+        with pytest.raises(LookupError):  # approving again is refused: it isn't waiting
+            await runner.resume(run_id, approve)
+        done = await runner.continue_run(run_id)
+    assert done.status == "done", done.error
+    assert len(gh.writes) == len({repr(w) for w in gh.writes})  # nothing written twice
+    assert not [w for w in gh.writes if w[0] == "comment" and w[1][0] == 3]  # not retried
+    [unsure] = [a for a in done.values["actions"] if a["id"] == "comment-3"]
+    assert not unsure["applied"] and "check the issue by hand" in unsure["error"]
+    applied = [a for a in done.values["actions"] if a["verdict"] == "needs_human"]
+    assert all(a["applied"] for a in applied if a["id"] != "comment-3")
+    assert audit.count(run_id, "claim_taken_over") == 1
+    assert audit.count(run_id, "action_unsure") == 1
+    assert audit.count(run_id, "decision", choice="approve") == 1
+    assert index.get(run_id).status is RunStatus.DONE and done.values["posted"]
+
+
+async def test_dropping_every_proposal_finishes_the_run(tmp_path: Path) -> None:
+    gh = sandbox_github()
+    async with open_triage_runner(
+        settings(tmp_path), github=gh, notifier=FakeNotifier(), durable=False, now=lambda: NOW
+    ) as runner:
+        run_id, packet = await waiting_run(runner)
+        every = ",".join(a.id for a in packet.actions)
+        out = await runner.resume(
+            run_id,
+            Decision(
+                choice="edit", reviewer="boss", edits={"drop": every}, plan_hash=packet.plan_hash
+            ),
+        )
+    assert out.status == "done", out.error
+    assert RunIndex.in_data_dir(tmp_path).get(run_id).status is RunStatus.DONE
+    assert not [w for w in gh.writes if w[0] in ("close", "add_labels")]
+
+
 def test_triage_cli_dry_run_with_output_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:

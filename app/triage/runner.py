@@ -18,7 +18,7 @@ from app.runtime.logging import bind_run, register_secrets
 from app.runtime.notify import Notifier, make_notifier
 from app.runtime.runs import RunIndex, RunStatus, new_run_id
 from app.triage.github import GitHubClient, IssuesAPI
-from app.triage.graph import TriageContext, build_graph, initial_state
+from app.triage.graph import ClaimLost, TriageContext, build_graph, initial_state
 from app.triage.rubric import Rubric
 
 log = structlog.get_logger(__name__)
@@ -48,12 +48,21 @@ class TriageRunner:
         return outcome
 
     async def continue_run(self, run_id: str) -> graphs.Outcome:
-        with bind_run(run_id, module="triage"):
-            outcome = await graphs.continue_run(self.graph, run_id, context=self.context)
+        # The one path allowed to take over a run whose apply step crashed.
+        self.context.continuing = True
+        try:
+            with bind_run(run_id, module="triage"):
+                outcome = await graphs.continue_run(self.graph, run_id, context=self.context)
+        finally:
+            self.context.continuing = False
         self._finish(run_id, outcome)
         return outcome
 
     def _finish(self, run_id: str, outcome: graphs.Outcome) -> None:
+        if outcome.status == "failed" and (outcome.error or "").startswith(
+            f"{ClaimLost.__name__}:"
+        ):
+            return  # the run belongs to the other approval; its status is not ours to change
         if outcome.status == "failed":
             self.context.index.set_status(run_id, RunStatus.FAILED)
             self.context.audit.record(

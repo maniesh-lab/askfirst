@@ -15,6 +15,12 @@ actions are only proposals; interactive, they pause at the same approval gate th
 uses, and `review approve <triage run>` works for them too. `post_digest` posts once per digest
 (its hash is kept in state), and `write_state` records the window for the next run.
 
+Acting on a decision starts with a claim (compare-and-set on the run's status, as for form
+submits), so two people approving at once can't both comment and close: the second one gets
+`ClaimLost` and changes nothing. If the process dies while applying, `runs continue` takes the
+run over and skips the actions the audit log shows as done. An action that started but never
+finished is not retried (its write may have reached GitHub); the digest lists it for a person.
+
 Live objects (GitHub client, LLM, notifier) live in the runtime context, never in state.
 """
 
@@ -112,6 +118,14 @@ class TriageState(TypedDict, total=False):
     outcome: str
 
 
+class ClaimLost(Exception):
+    """Another process is already acting on this run's decision."""
+
+
+# An action a crashed try started but never recorded: its write may or may not have landed.
+UNSURE = "may have been applied before a crash: check the issue by hand"
+
+
 @dataclass
 class TriageContext:
     settings: Settings
@@ -124,6 +138,9 @@ class TriageContext:
     now: Callable[[], datetime] = utc_now
     actions_url: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+    # True only inside `runs continue`: the one path allowed to take over a run whose apply
+    # step crashed (see _claim).
+    continuing: bool = False
 
 
 Ctx = Runtime[TriageContext]
@@ -354,9 +371,15 @@ async def _run_actions(
     if may_write:
         await _ensure_labels(state, ctx, chosen)
     for a in chosen:
+        if a.applied or a.error == UNSURE:
+            continue  # done (or maybe done) by an earlier try that crashed
         if not may_write:
             a.error = NOT_APPLIED
             continue
+        # Written before the GitHub call, so a crash in between leaves a trace (see UNSURE).
+        ctx.audit.record(
+            state["run_id"], "agent:apply", "action_started", action_id=a.id, issue=a.issue
+        )
         try:
             await execute(
                 a, ctx.github, state["repo"], token=token, plan_hash=state.get("plan_hash", "")
@@ -473,8 +496,53 @@ def after_gate(state: TriageState) -> str:
     ]
 
 
+def _claim(state: TriageState, ctx: TriageContext) -> None:
+    """Make this process the only one acting on the decision, or raise `ClaimLost`.
+
+    Normal path: the run must still be waiting (compare-and-set to SUBMITTING). Two approvals
+    racing: exactly one wins. `runs continue` may also take over a run whose apply step died:
+    still SUBMITTING (the process was killed) or FAILED (it raised).
+    """
+    run_id, index = state["run_id"], ctx.index
+    if index.claim(run_id, RunStatus.WAITING_REVIEW, RunStatus.SUBMITTING):
+        return
+    if ctx.continuing:
+        run = index.get(run_id)
+        killed = run is not None and run.status is RunStatus.SUBMITTING
+        if killed or index.claim(run_id, RunStatus.FAILED, RunStatus.SUBMITTING):
+            ctx.audit.record(run_id, "agent:claim", "claim_taken_over", after="crash")
+            return
+    ctx.audit.record(
+        run_id,
+        "agent:claim",
+        "claim_lost",
+        outcome="refused",
+        reason="the run was not waiting (another approval?)",
+    )
+    raise ClaimLost(f"{run_id} is already being handled by another approval")
+
+
+def _earlier_attempts(ctx: TriageContext, run_id: str) -> tuple[set[str], set[str]]:
+    """From the audit log: actions an earlier, crashed try applied, and ones it started but
+    never finished."""
+    started: set[str] = set()
+    finished: set[str] = set()
+    applied: set[str] = set()
+    for e in ctx.audit.read(run_id):
+        action_id = e.detail.get("action_id")
+        if e.action == "action_started":
+            started.add(action_id)
+        elif e.action == "action_applied":
+            finished.add(action_id)
+            if e.outcome == "ok":
+                applied.add(action_id)
+    return applied, started - finished
+
+
 def _log_decision(state: TriageState, ctx: TriageContext) -> Decision:
     decision = Decision.model_validate(state["decision"])
+    if ctx.continuing:
+        return decision  # logged by the try that crashed; once is the truth
     ctx.audit.record(
         state["run_id"],
         f"human:{decision.reviewer}",
@@ -488,16 +556,34 @@ def _log_decision(state: TriageState, ctx: TriageContext) -> Decision:
 
 @audited("apply_approved")
 async def apply_approved(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
+    _claim(state, ctx)
     decision = _log_decision(state, ctx)
     actions = [PlannedAction.model_validate(a) for a in state["actions"]]
+    chosen = pending(actions)
+    if ctx.continuing:
+        applied, unsure = _earlier_attempts(ctx, state["run_id"])
+        for a in chosen:
+            if a.id in applied:
+                a.applied = True
+            elif a.id in unsure:
+                a.error = UNSURE
+                ctx.audit.record(
+                    state["run_id"],
+                    "agent:apply",
+                    "action_unsure",
+                    outcome="needs_human_check",
+                    action_id=a.id,
+                    issue=a.issue,
+                )
     token = issue_token(decision, state["plan_hash"], state["run_id"])
-    touched = await _run_actions(state, ctx, pending(actions), token=token)
+    touched = await _run_actions(state, ctx, chosen, token=token)
     ctx.index.set_status(state["run_id"], RunStatus.RUNNING)
     return {"actions": [a.model_dump() for a in actions], "touched": touched}
 
 
 @audited("record_reject")
 async def record_reject(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
+    _claim(state, ctx)  # only one digest and one state comment per run
     _log_decision(state, ctx)
     actions = [PlannedAction.model_validate(a) for a in state["actions"]]
     for a in pending(actions):
@@ -516,6 +602,10 @@ async def apply_edit(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
         if a.id in drop:
             a.verdict = "dropped"
     waiting = pending(actions)
+    if not waiting:
+        # Everything was dropped: the run goes on to the digest, so it needs the claim too.
+        _claim(state, ctx)
+        ctx.index.set_status(state["run_id"], RunStatus.RUNNING)
     return {
         "actions": [a.model_dump() for a in actions],
         "plan_hash": stable_hash(
