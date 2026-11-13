@@ -16,6 +16,8 @@ def test_skipped_but_stale_issue_gets_a_close_proposal_only() -> None:
     actions = plan_actions([result(4, skipped=True, stale=True)], {4: ["triaged"]})
     assert [(a.id, a.kind) for a in actions] == [("close-stale-4", "close_issue")]
     assert plan_actions([result(5, skipped=True)], {}) == []
+    stale_security = result(6, skipped=True, stale=True, escalate=True)
+    assert plan_actions([stale_security], {6: ["triaged", "type:security"]}) == []
 
 
 def test_escalated_issue_gets_labels_only() -> None:

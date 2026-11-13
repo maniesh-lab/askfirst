@@ -36,6 +36,17 @@ def test_stale_and_skip_already_triaged() -> None:
     assert r.skip and r.stale  # skipped from the LLM, but still flagged stale
 
 
+def test_skipped_security_issue_stays_escalated() -> None:
+    # Triaged long ago and now stale: it must still count as escalated, so no close proposal.
+    by_label = issue(title="x", labels=["triaged", "type:security"], age_days=40)
+    by_words = issue(title="API key exposed in logs", labels=["triaged"], age_days=40)
+    for old in (by_label, by_words):
+        r = apply_rules(old, RUBRIC, NOW, last_run=NOW)
+        assert r.skip and r.stale and r.escalate
+        touched = apply_rules(old, RUBRIC, NOW, bot_touched_at=NOW)
+        assert touched.skip and touched.escalate
+
+
 def test_duplicate_candidates_only_older_open_issues() -> None:
     a = issue(1, "CSV export crashes on big notebooks", "out of memory on export", age_days=5)
     b = issue(2, "Export to CSV crashes for large notebooks", "out of memory error", age_days=1)

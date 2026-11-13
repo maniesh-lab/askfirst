@@ -75,17 +75,20 @@ def apply_rules(
         result.stale = True
         result.labels.append("stale")
         result.reasons.append(f"no update for {stale_days} days")
+    # Worked out before the skip rules: a security issue must never get a close proposal, even
+    # one triaged long ago that has now gone stale.
+    hits = _has_any(issue.text, rules.get("security_words", []))
+    is_security = bool(hits) or "type:security" in issue.labels
     if "triaged" in issue.labels and last_run is not None and issue.updated_at <= last_run:
         # Nothing new to classify, but it may still have gone stale (kept on the result).
-        result.skip = True
+        result.skip, result.escalate = True, is_security
         result.reasons.append("already triaged and not updated since the last run")
         return result
     if bot_touched_at is not None and issue.updated_at <= bot_touched_at:
-        result.skip = True
+        result.skip, result.escalate = True, is_security
         result.reasons.append("only changed by the triage bot since the last run")
         return result
 
-    hits = _has_any(issue.text, rules.get("security_words", []))
     if hits:
         result.category, result.priority, result.escalate = "security", "P0", True
         result.labels += ["type:security", "priority:P0"]
