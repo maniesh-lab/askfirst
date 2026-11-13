@@ -142,7 +142,8 @@ def create_app(settings: PracticeSettings | None = None) -> FastAPI:
             values.get("password", ""), settings.seller_password.get_secret_value()
         )
         target = values.get("next") or "/listings/new"
-        if not target.startswith("/") or target.startswith("//"):
+        # Same-site paths only: browsers read "/\evil.com" like "//evil.com" (another host).
+        if not target.startswith("/") or target[1:2] in ("/", "\\"):
             target = "/listings/new"
         if not (good_email and good_pass):
             return render(

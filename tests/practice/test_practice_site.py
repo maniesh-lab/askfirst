@@ -137,13 +137,14 @@ def test_listing_validation_on_publish(client: TestClient) -> None:
     assert bad.status_code == 422 and 'data-start-step="4"' in bad.text
 
 
-def test_login_next_cannot_redirect_off_site(client: TestClient) -> None:
+@pytest.mark.parametrize("next_url", ["//evil.example", "/\\evil.example", "https://evil.example"])
+def test_login_next_cannot_redirect_off_site(client: TestClient, next_url: str) -> None:
     page = client.post(
         "/login",
         data={
             "email": "seller@example.test",
             "password": "practice-only-pass",
-            "next": "//evil.example",
+            "next": next_url,
         },
     )
     assert str(page.url).endswith("/listings/new")
