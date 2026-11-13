@@ -246,7 +246,7 @@ behind each row, is in [failure-handling.md](failure-handling.md).
   practice site and fixtures written by hand, never against a site we don't own.
 - **No evasion.** No CAPTCHA solving, no stealth plugins, no fingerprint spoofing, no proxies.
   The User-Agent is Chromium's own string with our name added, so sites can tell it apart:
-  `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) askfirst/1.0.0
+  `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) askfirst/1.0.1
   (human-reviewed form automation)`.
 - **Honeypots and hidden fields are never touched**, and hidden tokens are never changed
   (100% in the detection eval and in the browser tests).

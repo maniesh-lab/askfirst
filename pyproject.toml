@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "askfirst"
-version = "1.0.0"
+version = "1.0.1"
 description = "Two reliable agents on one runtime: a browser form agent that asks before it submits, and a scheduled GitHub issue triage bot."
 license = "MIT"
 license-files = ["LICENSE"]
