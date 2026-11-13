@@ -345,6 +345,6 @@ digests, `DISCORD_REVIEW_WEBHOOK_URL` for "a review is waiting" pings), and for 
 - Smaller known gaps (a stale issue's close proposal is shown once, and a dry-run digest leaves out
   the labels it would add) are listed in [docs/failure-handling.md](docs/failure-handling.md).
 
-## License
+## Author
 
-MIT. Built by [Manish Pandeya](https://github.com/maniesh-lab).
+**Manish Pandeya** · [github.com/maniesh-lab](https://github.com/maniesh-lab)
