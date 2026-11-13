@@ -3,9 +3,7 @@
 **Date**: 2026-11-08 · **Commit**: the end of Phase 10 (fresh `git clone` from GitHub) · **Machine**:
 Arch Linux laptop, Python 3.14.8, Docker 29.9.2, Compose v5.6.1. (The git history was condensed to one commit per phase on 2026-11-09, so older commit hashes no longer exist.)
 
-This is the local part of the final check. Of the live parts, the real form on the hosted
-practice site is **done** ([real-form-run.md](real-form-run.md)); the scheduled triage run,
-the live evals and the Discord screenshot are still open (they need Boss's keys). See the end.
+This is the local part of the final check. The live parts are all done now; see the end.
 
 ## What was run, and what happened
 
@@ -38,13 +36,7 @@ container (`ALLOWED_HOSTS=practice-site`).
 
 - **Real form end-to-end on the hosted practice site (Done-when #1): done 2026-11-08**, see
   [real-form-run.md](real-form-run.md).
-
-### Still to do (live, Boss)
-
-| Part | Why it isn't done | Steps (also in PROGRESS.md, "Things Boss must do") |
-|---|---|---|
-| Latest scheduled triage run green (Done-when #2) | the secrets were set on 2026-11-12, so the next weekday run is the first that can pass | check `gh run list --workflow triage.yml --event schedule`; record `docs/results/schedule-proof.md` |
-
-Done since: the first manual triage run with the digest in Discord
-([live-triage-run.md](live-triage-run.md)), and the live evals and timings on Groq
-([evals.md](evals.md), [run-timings.md](run-timings.md)), all on 2026-11-12.
+- **Scheduled triage run green (Done-when #2): done 2026-11-12**, see
+  [schedule-proof.md](schedule-proof.md).
+- **First manual triage run with the digest in Discord**: [live-triage-run.md](live-triage-run.md).
+- **Live evals and timings on Groq**: [evals.md](evals.md), [run-timings.md](run-timings.md).
