@@ -6,7 +6,16 @@
   const hasStar = (t) => /\*\s*$/.test(clean(t));
   const cssEsc = (v) => (window.CSS && CSS.escape ? CSS.escape(v) : v.replace(/["\\]/g, "\\$&"));
 
-  // Visible = a person could see and use it. Hidden, zero-size, off-screen or aria-hidden is not.
+  // Visible = a person could see and use it. Honeypots and decoys are hidden in many ways, so
+  // look at the element *and* its ancestors: opacity, clipping, a zero-height box with overflow
+  // hidden, pushed far off the page, or text, background and border all transparent.
+  const alpha = (c) => {
+    if (!c || c === "transparent") return 0;
+    const m = c.match(/rgba?\(([^)]+)\)/);
+    if (!m) return 1;
+    const parts = m[1].split(/[ ,/]+/).filter(Boolean);
+    return parts.length >= 4 ? Number(parts[3].replace("%", "")) / (parts[3].includes("%") ? 100 : 1) : 1;
+  };
   function visibility(el) {
     const reasons = [];
     if (el.closest("[aria-hidden=true]")) reasons.push("aria-hidden");
@@ -14,12 +23,36 @@
     const style = getComputedStyle(el);
     if (style.display === "none") reasons.push("display-none");
     if (style.visibility === "hidden" || style.visibility === "collapse") reasons.push("visibility-hidden");
-    if (Number(style.opacity) === 0) reasons.push("opacity-0");
+    if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })) {
+      reasons.push("css-hidden");
+    }
     const r = el.getBoundingClientRect();
-    if (r.width < 1 || r.height < 1) reasons.push("zero-size");
+    if (r.width < 4 || r.height < 4) reasons.push("zero-size");
+    if ((style.clip && style.clip !== "auto") || (style.clipPath && style.clipPath !== "none")) reasons.push("clipped");
+    // Walk up: an ancestor that is see-through, clipped, positioned far away, or that cuts the
+    // element out of view (overflow hidden on a box that doesn't reach it).
+    let [left, top, right, bottom] = [r.left, r.top, r.right, r.bottom];
+    let positioned = style.position === "absolute" || style.position === "fixed";
+    for (let a = el; a && a !== document.documentElement; a = a.parentElement) {
+      const s = a === el ? style : getComputedStyle(a);
+      if (Number(s.opacity) < 0.05) { reasons.push("opacity-0"); break; }
+      if (a === el) continue;
+      if (s.clipPath && s.clipPath !== "none") { reasons.push("clipped"); break; }
+      if (s.position === "absolute" || s.position === "fixed") positioned = true;
+      if (a === document.body) continue;
+      const box = a.getBoundingClientRect();
+      if (s.overflowX !== "visible") { left = Math.max(left, box.left); right = Math.min(right, box.right); }
+      if (s.overflowY !== "visible") { top = Math.max(top, box.top); bottom = Math.min(bottom, box.bottom); }
+    }
+    if (right - left < 4 || bottom - top < 4) reasons.push("clipped-by-parent");
     const docW = Math.max(document.documentElement.scrollWidth, window.innerWidth);
     if (r.right < 0 || r.bottom < 0 || r.left > docW + 50) reasons.push("off-screen");
-    return reasons;
+    if (positioned && r.top + window.scrollY > 10000) reasons.push("off-screen");
+    const borderless = ["Top", "Right", "Bottom", "Left"].every((side) => alpha(style[`border${side}Color`]) === 0 || style[`border${side}Width`] === "0px");
+    if (alpha(style.color) === 0 && alpha(style.backgroundColor) === 0 && borderless && !["radio", "checkbox", "file"].includes(el.type)) {
+      reasons.push("transparent");
+    }
+    return [...new Set(reasons)];
   }
 
   function textOf(node) {
@@ -164,8 +197,11 @@
       const key = `${base.form_index}|${el.name}`;
       if (seenGroups.has(key)) continue;
       seenGroups.add(key);
-      const radios = Array.from(document.querySelectorAll(`input[type=radio][name="${cssEsc(el.name)}"]`))
+      const allRadios = Array.from(document.querySelectorAll(`input[type=radio][name="${cssEsc(el.name)}"]`))
         .filter((r) => formIndexOf(r, forms) === base.form_index);
+      // Only the members a person can see: a hidden one is never picked.
+      const shown = allRadios.filter((r) => !visibility(r).length);
+      const radios = shown.length ? shown : allRadios;
       kind = "radio";
       [label, source] = labelFor(el, { group: true, skipWrap: true });
       if (source === "label-for") [label, source] = labelFor(el.closest("fieldset") || el, { group: true, skipWrap: true });
@@ -179,9 +215,12 @@
       base.disabled = radios.every((r) => r.disabled);
       base.css = null;
     } else if (type === "checkbox") {
-      const group = Array.from(document.querySelectorAll(`input[type=checkbox][name="${cssEsc(el.name)}"]`))
+      const allBoxes = Array.from(document.querySelectorAll(`input[type=checkbox][name="${cssEsc(el.name)}"]`))
         .filter((r) => formIndexOf(r, forms) === base.form_index);
-      if (el.name && group.length > 1) {
+      // Only the boxes a person can see: filling a group never ticks or unticks a hidden one.
+      const shownBoxes = allBoxes.filter((r) => !visibility(r).length);
+      const group = shownBoxes.length ? shownBoxes : allBoxes;
+      if (el.name && allBoxes.length > 1) {
         const key = `${base.form_index}|${el.name}`;
         if (seenGroups.has(key)) continue;
         seenGroups.add(key);
@@ -201,7 +240,8 @@
     } else if (native) {
       if (tag === "select") {
         kind = el.multiple ? "select_multiple" : "select";
-        base.options = Array.from(el.options).map((o) => ({
+        // A hidden or disabled option can't be picked by a person, so it isn't offered.
+        base.options = Array.from(el.options).filter((o) => !o.hidden && !o.disabled && getComputedStyle(o).display !== "none").map((o) => ({
           value: o.value, text: clean(o.textContent), selected: o.selected,
           group: o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : null,
         }));

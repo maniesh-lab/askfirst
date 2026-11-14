@@ -251,3 +251,36 @@ async def test_websockets_are_closed_and_audited(tmp_path: Path) -> None:
         )
     assert opened == "closed"
     assert AuditLog(tmp_path).count("form-test", "blocked_request", reason="websocket") == 1
+
+
+HIDING_TRICKS = """<!doctype html><html><body><form action="/x" method="post">
+<label>Name <input name="name"></label>
+<div style="opacity:0"><label>Faded <input name="faded"></label></div>
+<label class="sr">Sr only <input name="sr_only" style="position:absolute;width:1px;height:1px;
+  overflow:hidden;clip:rect(0 0 0 0)"></label>
+<div style="height:0;overflow:hidden"><label>Website <input name="site_hp"></label></div>
+<label>Far <input name="far" style="position:absolute;top:20000px"></label>
+<label>Clipped <input name="clipped" style="clip-path:inset(50%)"></label>
+<label>Ink <input name="ink" style="color:transparent;background:transparent;border:0"></label>
+<fieldset><legend>Plan</legend>
+  <label><input type="radio" name="plan" value="a"> A</label>
+  <label><input type="radio" name="plan" value="b"> B</label>
+  <span style="opacity:0"><input type="radio" name="plan" value="pro"></span></fieldset>
+<select name="city"><option>Kathmandu</option><option hidden>Secret</option>
+  <option disabled>Gone</option></select>
+<button type="submit">Send</button></form></body></html>"""
+
+
+async def test_common_hiding_tricks_are_never_fillable(settings: Settings) -> None:
+    """Honeypots hidden by an ancestor's opacity, clipping, a zero-height box, far positioning
+    or transparent ink must count as hidden (never filled), not just display:none ones."""
+    async with BrowserSession(settings) as s:
+        page = await s.new_page()
+        await page.set_content(HIDING_TRICKS)
+        step = await detect(page, step_index=0)
+    by_key = {f.name or f.key: f for f in step.fields}
+    assert by_key["name"].fillable
+    for name in ("faded", "sr_only", "site_hp", "far", "clipped", "ink"):
+        assert not by_key[name].fillable, name
+    assert [o.value for o in by_key["plan"].options] == ["a", "b"]  # the hidden "pro" isn't offered
+    assert [o.text for o in by_key["city"].options] == ["Kathmandu"]
