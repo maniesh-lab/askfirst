@@ -141,3 +141,18 @@ def test_settings_secrets_are_masked_even_without_a_telltale_shape(
     structlog.get_logger("t").info("oops", detail="pat plain-pat-value-123 key odd-groq-key-456")
     err = capsys.readouterr().err
     assert "plain-pat-value-123" not in err and "odd-groq-key-456" not in err
+
+
+def test_new_run_never_reuses_an_id(tmp_path, monkeypatch) -> None:
+    from app.runtime import runs
+
+    index = runs.RunIndex.in_data_dir(tmp_path)
+    ids = iter(["form-20261114-1000-aaaa", "form-20261114-1000-aaaa", "form-20261114-1000-bbbb"])
+    monkeypatch.setattr(runs, "new_run_id", lambda kind: next(ids))
+    assert runs.new_run(index, "form", "a") == "form-20261114-1000-aaaa"
+    assert runs.new_run(index, "form", "b") == "form-20261114-1000-bbbb"  # the clash is redrawn
+    import pytest
+
+    with pytest.raises(ValueError, match="already exists"):
+        runs.new_run(index, "form", "c", run_id="form-20261114-1000-aaaa")
+    assert index.get("form-20261114-1000-aaaa").title == "a"  # the first run is untouched

@@ -127,12 +127,15 @@ def build_packet(state: dict[str, Any]) -> ReviewPacket:
 
 
 def is_clean(packet: ReviewPacket) -> bool:
-    """No flags, no warnings, nothing left for a person: safe for `--all-clean` batch approval."""
+    """No flags, no warnings, nothing left for a person, and nothing the LLM wrote: safe for
+    `--all-clean` batch approval. A drafted answer is words a person should read before it goes
+    out under their name, so a run with drafts is approved one by one."""
     d = packet.details
     return (
         not d.get("warnings")
         and d.get("counts", {}).get("flagged", 1) == 0
         and d.get("counts", {}).get("needs_human", 1) == 0
+        and d.get("counts", {}).get("drafted", 1) == 0
     )
 
 

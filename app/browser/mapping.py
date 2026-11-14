@@ -315,6 +315,13 @@ def map_field(
         return Mapping(
             key=field.key, status="needs_human", reason="passwords come only from the login step"
         )
+    for k in (field.key, field.name):
+        if k and data and k in data and data[k] in (None, ""):
+            # The batch row has this column but leaves it empty: a person decides, rather than
+            # quietly using the persona's value (a stock photo on a cookbook listing).
+            return Mapping(
+                key=field.key, status="needs_human", reason=f"the data row leaves {k} empty"
+            )
     found = _candidate(field, profile, overrides or {}, data or {})
     if found is None:
         if is_free_text(field):

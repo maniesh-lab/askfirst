@@ -195,10 +195,10 @@ async def detect(
         form_method=form["method"] if form else "get",
         fields=fields,
         buttons=buttons,
+        # Names only: the agent never changes hidden inputs, and their values (CSRF tokens) would
+        # otherwise sit in the checkpoint DB and data/detect/ for no reason.
         hidden_inputs={
-            h["name"]: h["value"]
-            for h in raw["hidden_inputs"]
-            if h["form_index"] == main and h["name"]
+            h["name"]: "" for h in raw["hidden_inputs"] if h["form_index"] == main and h["name"]
         },
     )
     step.schema_hash = step.compute_hash()

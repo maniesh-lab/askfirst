@@ -129,14 +129,16 @@ class RunIndex:
         finally:
             conn.close()
 
-    def create(self, run_id: str, title: str = "", status: RunStatus = RunStatus.RUNNING) -> None:
+    def create(self, run_id: str, title: str = "", status: RunStatus = RunStatus.RUNNING) -> bool:
+        """Add a run. False if that ID already exists (the existing run is left alone)."""
         now = utc_now().isoformat()
         with self._connect() as conn:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT OR IGNORE INTO runs (id, kind, status, title, created_at, updated_at)"
                 " VALUES (?, ?, ?, ?, ?, ?)",
                 (run_id, run_kind(run_id), status.value, title, now, now),
             )
+            return cur.rowcount == 1
 
     def set_status(self, run_id: str, status: RunStatus, title: str | None = None) -> None:
         now = utc_now().isoformat()
@@ -182,3 +184,17 @@ class RunIndex:
         with self._connect() as conn:
             rows = conn.execute(query, params).fetchall()
         return [RunRecord(**dict(r)) for r in rows]
+
+
+def new_run(index: RunIndex, kind: str, title: str, run_id: str | None = None) -> str:
+    """Create a run's index row and return its ID. A fresh ID is drawn again if it is taken (16
+    random bits per minute can collide in a big batch, and two runs must never share a thread).
+    A given ID that already exists is refused."""
+    if run_id is not None:
+        if not index.create(run_id, title=title):
+            raise ValueError(f"run {run_id} already exists")
+        return run_id
+    while True:
+        run_id = new_run_id(kind)
+        if index.create(run_id, title=title):
+            return run_id

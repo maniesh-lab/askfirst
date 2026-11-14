@@ -286,3 +286,20 @@ def test_dedupe_keys_only_renames_fillable_repeats() -> None:
     )
     dedupe_keys(second, [first])
     assert [f.key for f in second.fields] == ["email_s2", "price", "name"]
+
+
+def test_batch_rows_keep_blank_cells_and_read_excel_csv(tmp_path) -> None:
+    from app.browser.runner import load_batch_rows
+
+    csv_file = tmp_path / "rows.csv"
+    csv_file.write_bytes("﻿title,photos\nCookbook,\n".encode())
+    assert load_batch_rows(str(csv_file), {}) == [{"title": "Cookbook", "photos": ""}]
+
+
+def test_a_blank_data_cell_never_falls_back_to_the_persona() -> None:
+    from app.browser.mapping import Profile, map_field
+    from app.browser.schema import Field
+
+    photos = Field(key="photos", name="photos", kind="file", label="Photos", visible=True)
+    m = map_field(photos, Profile.load("profiles/example.yaml"), data={"photos": ""})
+    assert m.status == "needs_human" and "leaves photos empty" in m.reason

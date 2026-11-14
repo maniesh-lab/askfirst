@@ -133,3 +133,21 @@ def test_is_clean_and_ping_has_no_values() -> None:
     assert not is_clean(
         packet([ReviewRow(step=0, key="c", label="c", value=True, flags=["agreement"])])
     )
+
+
+def test_runs_with_drafts_are_not_clean() -> None:
+    from app.browser.review import is_clean
+    from app.runtime.approval import ReviewPacket
+
+    def packet(drafted: int) -> ReviewPacket:
+        counts = {"filled": 5, "drafted": drafted, "needs_human": 0, "flagged": 0}
+        return ReviewPacket(
+            run_id="form-1",
+            kind="form",
+            title="t",
+            actions=[],
+            plan_hash="h" * 16,
+            details={"counts": counts, "warnings": []},
+        )
+
+    assert is_clean(packet(0)) and not is_clean(packet(1))

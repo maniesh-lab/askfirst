@@ -46,7 +46,7 @@ async def test_job_form_fields_honeypot_and_submit(tmp_path: Path) -> None:
         step = await detect(await open_fixture(s, "job_apply"))
     honeypot = next(f for f in step.fields if f.name == "website")
     assert honeypot.honeypot and not honeypot.fillable
-    assert step.hidden_inputs == {"csrf_token": "fixture-token"}
+    assert step.hidden_inputs == {"csrf_token": ""}  # the name only, never the token
     assert [b.text for b in step.buttons_of("submit")] == ["Submit application"]
     radio = next(f for f in step.fields if f.kind == "radio")
     assert radio.label == "Are you allowed to work in Nepal?" and len(radio.options) == 3

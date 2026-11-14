@@ -364,3 +364,24 @@ async def test_seller_password_leaks_nowhere(settings: Settings, site, capsys) -
     assert any(p.suffix == ".png" for p in paths.root.rglob("*"))  # screenshots were checked
     logs = capsys.readouterr()
     assert "practice-only-pass" not in logs.err + logs.out
+
+
+async def test_approval_is_tied_to_the_reviewed_address(
+    settings: Settings, site, tmp_path: Path
+) -> None:
+    """Approving after the settings point at another (allowed) site must not submit there."""
+    from practice_site.config import PracticeSettings
+    from practice_site.server import running_site
+    from tests.browser.conftest import Site
+
+    async with open_form_runner(settings, durable=False) as runner:
+        run_id, out = await runner.start("site:practice/job_apply", PROFILE)
+        other_cfg = PracticeSettings(_env_file=None, data_dir=tmp_path / "other")
+        with running_site(other_cfg) as (other_base, other_app):
+            # Same saved run, but now PRACTICE_BASE_URL names a different site on an allowed host.
+            runner.context.settings = settings.model_copy(update={"practice_base_url": other_base})
+            done = await runner.resume(run_id, approve(out.packet))
+            other = Site(other_base, other_app)
+            assert other.submissions() == []
+    assert done.status == "failed" and "address changed since review" in done.error
+    assert site.submissions() == []

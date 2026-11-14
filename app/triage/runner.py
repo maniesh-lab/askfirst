@@ -16,7 +16,7 @@ from app.runtime.checkpoint import open_checkpointer
 from app.runtime.llm import LLM, make_llm
 from app.runtime.logging import bind_run, register_secrets
 from app.runtime.notify import Notifier, make_notifier
-from app.runtime.runs import RunIndex, RunStatus, new_run_id
+from app.runtime.runs import RunIndex, RunStatus, new_run
 from app.triage.actions import UNSURE
 from app.triage.github import GitHubClient, IssuesAPI
 from app.triage.graph import TriageContext, build_graph, initial_state
@@ -33,8 +33,7 @@ class TriageRunner:
     async def start(
         self, repo: str, *, run_id: str | None = None, **options: Any
     ) -> tuple[str, graphs.Outcome]:
-        run_id = run_id or new_run_id("triage")
-        self.context.index.create(run_id, title=f"Triage {repo}")
+        run_id = new_run(self.context.index, "triage", f"Triage {repo}", run_id)
         with bind_run(run_id, module="triage"):
             outcome = await graphs.start(
                 self.graph, initial_state(run_id, repo, **options), run_id, context=self.context

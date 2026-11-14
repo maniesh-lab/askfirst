@@ -17,7 +17,7 @@ from app.runtime.checkpoint import open_checkpointer
 from app.runtime.llm import LLM, make_llm
 from app.runtime.logging import bind_run, register_secrets
 from app.runtime.notify import Notifier, make_notifier
-from app.runtime.runs import RunIndex, RunStatus, new_run_id
+from app.runtime.runs import RunIndex, RunStatus, new_run
 
 
 @dataclass
@@ -34,8 +34,7 @@ class FormRunner:
         mode: str = "interactive",
         run_id: str | None = None,
     ) -> tuple[str, graphs.Outcome]:
-        run_id = run_id or new_run_id("form")
-        self.context.index.create(run_id, title=target)
+        run_id = new_run(self.context.index, "form", target, run_id)
         with bind_run(run_id, module="browser"):
             outcome = await graphs.start(
                 self.graph,
@@ -62,9 +61,14 @@ class FormRunner:
         if outcome.status != "failed":
             return
         run = self.context.index.get(run_id)
-        if run is not None and run.status is RunStatus.SUBMITTING:
-            # It failed after the run was claimed for the click: the form may have gone
-            # through. Never "failed" (someone might just retry and submit twice).
+        if run is not None and run.status in (
+            RunStatus.SUBMITTING,
+            RunStatus.DONE,
+            RunStatus.NEEDS_HUMAN_CHECK,
+        ):
+            # It failed after the run was claimed for the click (or even after it was marked
+            # done, e.g. writing result.json): the form may have gone through. Never "failed"
+            # (someone might just retry and submit twice).
             self.context.index.set_status(run_id, RunStatus.NEEDS_HUMAN_CHECK)
             self.context.audit.record(
                 run_id,
@@ -114,14 +118,17 @@ def load_batch_rows(csv_path: str, data_columns: dict[str, str]) -> list[dict[st
     """One data dict per CSV row, with columns renamed to field keys by the site profile."""
     import csv
 
-    with open(csv_path, newline="", encoding="utf-8") as fh:
+    # utf-8-sig: Excel's "CSV UTF-8" starts with a byte-order mark that would rename column 1.
+    with open(csv_path, newline="", encoding="utf-8-sig") as fh:
         rows = list(csv.DictReader(fh))
     out = []
     for row in rows:
         data = {}
         for column, value in row.items():
-            if column is None or value in (None, ""):
+            if column is None:
                 continue
-            data[data_columns.get(column, column)] = value.strip()
+            # A blank cell stays in the row as "": it means "this row has no value here", so
+            # mapping must not fall back to the persona (e.g. a stock photo on a listing).
+            data[data_columns.get(column, column)] = (value or "").strip()
         out.append(data)
     return out

@@ -64,5 +64,10 @@ def test_reject_and_all_clean(cli_env: Settings, site, capsys, monkeypatch) -> N
     assert cli.main(["review", "approve", "--all-clean"]) == 0
     assert "nothing approved" in capsys.readouterr().out
     assert cli.main(["review", "approve", "--all-clean", "--yes"]) == 0
-    assert len(site.submissions()) == 5
+    # The cookbook row leaves its photo blank: it waits for a person instead of quietly getting
+    # the persona's stock photo, so 4 of the 5 listings are clean and published.
+    assert len(site.submissions()) == 4
+    [left] = waiting(cli_env)
+    assert cli.main(["review", "show", left]) == 0
+    assert "the data row leaves" in capsys.readouterr().out
     assert cli.main(["review", "approve"]) == 2  # no run ids and no --all-clean

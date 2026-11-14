@@ -24,6 +24,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypedDict
+from urllib.parse import urlsplit
 
 import structlog
 from langgraph.graph import END, START, StateGraph
@@ -46,7 +47,7 @@ from app.browser.review import build_packet, ping_text, write_review_files
 from app.browser.schema import Field, FormStep, dedupe_keys
 from app.browser.session import BrowserSession, FixtureServer, settle
 from app.browser.sites import SITES_DIR, Target, parse_target
-from app.browser.submit import SubmitResult, check_success, submit
+from app.browser.submit import SubmitRefused, SubmitResult, check_success, submit
 from app.config import Settings
 from app.runtime.approval import (
     Decision,
@@ -224,7 +225,10 @@ async def open_page(state: FormState, ctx: FormContext) -> dict[str, Any]:
     session, page = await ctx.browser.open(ctx, state["run_id"], storage_path(ctx.settings, target))
     await session.goto(page, target.url)
     session.guard.stage = "fill"
+    # A refill after "page changed" starts over: earlier edits and fill problems no longer apply.
+    keep = [w for w in state.get("warnings", []) if w.startswith("page changed")]
     return {
+        "warnings": keep,
         "step_index": 0,
         "schema": [],
         "mappings": {},
@@ -404,6 +408,13 @@ async def verify(state: FormState, ctx: FormContext) -> dict[str, Any]:
         warnings.append(f"values changed after filling: {', '.join(bad)}")
     wanted = target.form.submit_button if target.form else None
     plan.final_button = final_button_for(step, wanted)
+    if (
+        plan.final_button is not None
+        and await resolve(page, plan.final_button.locator).count() != 1
+    ):
+        # Caught here, so a broken button never gets approved, claimed and then refused.
+        warnings.append(f"final button {plan.final_button.text!r} is not exactly one element")
+        plan.final_button = None
     if plan.final_button is None:
         warnings.append("no single final submit button found; submit is not possible")
     elif wanted and plan.final_button.text != wanted:
@@ -553,6 +564,13 @@ async def prepare_submit(state: FormState, ctx: FormContext) -> dict[str, Any]:
     _record_decision(state, ctx)
     target = ctx.target(state["target"])
     plan = FillPlan.model_validate(state["plan"])
+    if urlsplit(target.url)[:3] != urlsplit(plan.url)[:3]:
+        # The settings or site profile now point somewhere else (another PRACTICE_BASE_URL, an
+        # edited YAML). The approval was for the page that was reviewed, not this one.
+        raise RuntimeError(
+            f"the form's address changed since review ({plan.url} -> {target.url}); "
+            "nothing was submitted: start a new run"
+        )
     session, page = await ctx.browser.open(ctx, state["run_id"], storage_path(ctx.settings, target))
     await session.goto(page, target.url)
     if target.form and target.form.login and on_login_page(page, target):
@@ -673,9 +691,19 @@ async def do_submit(state: FormState, ctx: FormContext) -> dict[str, Any]:
         if ctx.crash_after_click:
             raise SimulatedCrash("simulated crash right after the click")
 
-    result = await submit(
-        session, page, plan, token, target.form.success if target.form else None, after_click=crash
-    )
+    try:
+        result = await submit(
+            session,
+            page,
+            plan,
+            token,
+            target.form.success if target.form else None,
+            after_click=crash,
+        )
+    except SubmitRefused as exc:
+        ctx.audit.record(state["run_id"], "agent:submit", "submit_refused", outcome="failed")
+        await ctx.browser.close()
+        return {"result": {"status": "refused", "url": plan.url, "message": f"not clicked: {exc}"}}
     ctx.browser.ready_for = None
     shot = await _screenshot(page, _paths(ctx, state), "confirmation")
     ctx.audit.record(
