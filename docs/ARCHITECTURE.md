@@ -150,8 +150,11 @@ Three guards inside the browser keep it from doing anything else (`app/browser/s
    (pages, scripts, images, XHR) to them. Each block is an audit event. Service workers are off
    and WebSockets are closed, since neither goes through that handler. Playwright doesn't route
    redirects, so page loads are fetched with redirects off and every hop is checked before the
-   browser may follow it; a redirect to another host is blocked and audited.
-2. **Network guard.** Every POST, PUT, PATCH and DELETE is aborted, so a stray Enter key can't
+   browser may follow it (a Location is read the way a browser reads it); a redirect to another
+   host is blocked and audited. Behind that, Chromium itself sends every host that isn't allowed
+   to a dead proxy and keeps WebRTC off the network, so what the route handler never sees (a
+   sub-resource following a redirect, a preconnect) fails at the network layer.
+2. **Network guard.** Every request other than GET and HEAD is aborted, so a stray Enter key can't
    submit. Exactly two writes are ever let through, one at a time: the login form's own POST,
    and the approved submit.
 3. **Submit blocker.** A script that runs before the page's own cancels `submit` events and
@@ -244,12 +247,15 @@ behind each row, is in [failure-handling.md](failure-handling.md).
 - **Only our own forms.** The browser may load only hosts in `ALLOWED_HOSTS` (default
   `127.0.0.1,localhost`); the network guard aborts everything else. It is tested against our own
   practice site and fixtures written by hand, never against a site we don't own.
-- **No evasion.** No CAPTCHA solving, no stealth plugins, no fingerprint spoofing, no proxies.
+- **No evasion.** No CAPTCHA solving, no stealth plugins, no fingerprint spoofing, no proxies
+  (the browser's only proxy setting is a dead end for hosts that aren't allowed).
   The User-Agent is Chromium's own string with our name added, so sites can tell it apart:
   `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) askfirst/1.0.1
   (human-reviewed form automation)`.
 - **Honeypots and hidden fields are never touched**, and hidden tokens are never changed
-  (100% in the detection eval and in the browser tests).
+  (100% in the detection eval and in the browser tests). "Hidden" includes the usual CSS tricks
+  on the field or any parent: opacity, clipping, a zero-height box, far positioning, transparent
+  ink.
 - **Nothing irreversible without a person.** No bypass flag exists, not even for tests: tests go
   through the real approval path.
 - **A fake persona.** Every profile, fixture, screenshot and the demo use Riya Testwell from

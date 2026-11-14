@@ -218,7 +218,7 @@ All commands are `python -m app.cli <command>`; `--help` on any of them lists ev
 | `fill <target>` | Fill a form and stop for review. `--headed` shows the browser, `--wait` asks approve/reject in the terminal, `--profile` picks a profile |
 | `fill-batch <target> --data rows.csv` | One form run per CSV row (e.g. marketplace listings); each waits for its own review |
 | `review list` / `show <run_id>` | Runs waiting for a person, and what one will do |
-| `review approve <run_id>...` | Approve; it submits now. `--plan-hash` refuses if the plan changed since you looked; `--all-clean` approves every form run with zero flags (asks first; `--yes` skips the question) |
+| `review approve <run_id>...` | Approve; it submits now. `--plan-hash` refuses if the plan changed since you looked; `--all-clean` approves every form run with zero flags, nothing left for a person and no LLM-drafted answers (asks first; `--yes` skips the question) |
 | `review edit <run_id> --set field=value` | Change values (the field names `review show` lists) and review again; for triage, `--set drop=<id>,<id>` drops proposals |
 | `review reject <run_id> --reason "..."` | Nothing is submitted |
 | `runs list` / `show <run_id>` | Recent runs and their status |
@@ -230,12 +230,14 @@ All commands are `python -m app.cli <command>`; `--help` on any of them lists ev
 
 - **Only our own forms.** The browser may load only hosts in `ALLOWED_HOSTS` (default
   `127.0.0.1,localhost`). Every request to any other host is blocked, redirects included, and each
-  block is logged. It is tested against our practice site and forms written by hand, never a site
+  block is logged; behind that check, Chromium sends any other host to a dead proxy. It is tested against our practice site and forms written by hand, never a site
   we don't own.
-- **No evasion.** No CAPTCHA solving, stealth plugins, fingerprint spoofing or proxies. The
+- **No evasion.** No CAPTCHA solving, stealth plugins, fingerprint spoofing or proxies (the only
+  proxy setting is a dead end for hosts that aren't allowed). The
   User-Agent says `askfirst ... (human-reviewed form automation)`, so a site can tell it apart.
-- **Hidden fields and honeypots are never touched**, and hidden tokens are never changed.
-- **Nothing is sent by accident.** Inside the browser every POST, PUT, PATCH and DELETE is blocked,
+- **Hidden fields and honeypots are never touched** (including ones hidden by CSS tricks on a
+  parent), and hidden tokens are never changed.
+- **Nothing is sent by accident.** Inside the browser every request other than GET and HEAD is blocked,
   and the page's own submit is switched off. The only two writes ever let through are a login form
   and the approved submit.
 - **A fake person.** Every profile, fixture, screenshot and the demo use Riya Testwell from
@@ -252,7 +254,7 @@ All commands are `python -m app.cli <command>`; `--help` on any of them lists ev
 ## Tests and CI
 
 ```bash
-pytest                    # 250 tests, about a minute: fake LLM, mocked GitHub and Discord, no network
+pytest                    # 282 tests, about a minute and a half: fake LLM, mocked GitHub and Discord, no network
 pytest --run-live         # also runs tests marked `live` (none yet; live checks are the --live evals)
 ruff check . && ruff format --check .
 ./scripts/compose_smoke.sh   # the whole fill, wait, approve, submit-once loop in Docker
@@ -262,7 +264,7 @@ Browser tests run real headless Chromium against the practice site and saved HTM
 cover the crash cases: a restart while waiting, the page changing between review and submit, a
 crash right after the click (never a second click), and a second approval racing the first
 (it loses the claim and never clicks).
-Coverage is 92% of `app/` on a local run (2026-11-13,
+Coverage is 93% of `app/` on a local run (2026-11-14,
 [final-check.md](docs/results/final-check.md)); the Codecov badge shows CI's merged figure.
 
 CI runs four jobs on every push to `main` and every pull request: **lint** (ruff, format, and actionlint for the

@@ -1,10 +1,49 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- The browser now enforces the host allowlist itself: every host that isn't allowed goes to a
+  dead proxy and WebRTC is kept off the network. Before, an `<img>`, script or `fetch()` that
+  followed an open redirect on an allowed host could reach any host, and a backslash in a
+  redirect (`http://evil\@ok/`) fooled the redirect check. Only GET and HEAD pass during filling.
+- Honeypots hidden by common CSS tricks (an `opacity:0` wrapper, sr-only clipping, a zero-height
+  box, far positioning, `clip-path`, transparent ink) counted as visible and were filled; hidden
+  group members and options are no longer offered.
+- An approval is tied to the reviewed address: approving with another `PRACTICE_BASE_URL` (or an
+  edited site profile) no longer submits to a different site.
+- `--all-clean` no longer approves runs with LLM-drafted answers; a blank CSV cell no longer falls
+  back to the persona (a stock photo on a listing).
+- Triage: a stale, already triaged security issue still got a close proposal (the 1.0.1 fix
+  stopped at the rule result); issues labelled `type:security` or classified as security by the
+  LLM are escalated at P0; the rules read the full body (code blocks and text after 3000
+  characters included) and plural security words; the model can only add `area:` labels from
+  the rubric's list; issue text can't close the prompt's input block; issue titles and summaries
+  are plain text in the digest (no injected links or mention chips).
+- The workflow gives its secrets only to the steps that use them; GitHub "next" links are only
+  followed on GitHub's API host; page and issue text is printed without terminal control codes;
+  site profiles can only name login settings; hidden input values (CSRF tokens) are no longer
+  stored; the page check before submit also covers field names, hidden inputs and buttons.
+
+### Fixed
+
+- `review edit` can change fields on earlier steps of a multi-step form (the marketplace price).
+- Triage never loses or repeats work after a partial failure: a failed state read fails the run
+  (instead of starting over with a second log issue), a partly posted digest is posted again,
+  an LLM outage keeps the window and exits 1, a write that timed out is "maybe applied" (never
+  retried), two issues filed in the same second aren't each other's duplicate, a "please add
+  info" comment isn't proposed again while `needs-info` is on, `drop=` only removes waiting
+  proposals, and the step timeout makes a hung run fail and ping.
+- A refused submit (nothing clicked) ends as failed, a failure after a run was done no longer
+  marks it failed, run IDs can't collide, Excel's UTF-8 CSV reads correctly, and the remaining
+  CLI errors print one line instead of a traceback.
+
 ## 1.0.1 (2026-11-13)
 
 ### Fixed
 
-- Triage only trusts run-state comments from people who can write to the repo. Before, anyone
+- Triage only trusts run-state comments from the repo's owner, members and collaborators. Before, anyone
   could post a hidden state block on the public log issue and hide issues from every later run.
 - A triaged security issue that goes stale stays escalated, so it never gets a close proposal.
 - `fill`, `review approve`, `fill-batch` and `runs continue` exit 1 when the run gave up, the
