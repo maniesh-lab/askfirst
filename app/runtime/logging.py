@@ -1,6 +1,6 @@
 """Structured logs (structlog) that always carry the run ID and never carry secrets.
 
-Call `configure_logging(settings)` once at program start. Inside a run, wrap the work in
+Call `configure_logging(level, fmt)` once at program start. Inside a run, wrap the work in
 `bind_run(run_id, module=...)`: every log line in that block gets `run_id` (plus `module` and
 `thread_id`), and Steadfast's own log lines get the same ID as their `correlation_id`.
 
