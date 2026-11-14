@@ -85,7 +85,8 @@ def plan_actions(
             )
         if r.escalate:
             continue  # labels only: see the module docstring
-        if r.needs_info:
+        if r.needs_info and "needs-info" not in current_labels.get(r.number, []):
+            # Already asked (the label is on): asking again on every update spams the reporter.
             actions.append(
                 PlannedAction(
                     id=f"comment-{r.number}",

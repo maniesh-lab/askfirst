@@ -189,6 +189,7 @@ def merge(
             url=issue.url,
             skipped=True,
             stale=rules.stale,
+            escalate=rules.escalate,  # a skipped security issue must never get a close proposal
             source="rules",
             rationale="; ".join(rules.reasons),
         )
@@ -201,6 +202,13 @@ def merge(
     if rules.priority and rules.priority != priority:
         overrides.append(f"priority {priority} -> {rules.priority} (rule)")
         priority = rules.priority
+    escalate = rules.escalate
+    if category == "security":
+        # The rubric says security is always P0 and escalated, whoever spotted it.
+        escalate = True
+        if priority != "P0":
+            overrides.append(f"priority {priority} -> P0 (security is always P0)")
+            priority = "P0"
     if rules.needs_info and llm and not llm.needs_info:
         overrides.append("needs_info false -> true (rule)")
     labels = {lab for lab in (llm.labels if llm else []) if rubric.label_allowed(lab)}
@@ -216,7 +224,8 @@ def merge(
         if not lab.startswith(("type:", "priority:"))
         or lab in {f"type:{category}", f"priority:{priority}"}
     }
-    needs_info = rules.needs_info or bool(llm and llm.needs_info)
+    # A person handles escalated issues: no public "please add steps" for a security report.
+    needs_info = not escalate and (rules.needs_info or bool(llm and llm.needs_info))
     if needs_info:
         labels.add("needs-info")
     duplicate_of = llm.duplicate_of if llm else None
@@ -238,7 +247,7 @@ def merge(
         summary=(llm.summary if llm else issue.title)[:160],
         rationale=(llm.rationale if llm else "; ".join(rules.reasons))[:300],
         stale=rules.stale,
-        escalate=rules.escalate,
+        escalate=escalate,
         unclassified=llm is None and rules.category is None,
         overrides=overrides,
         source="llm" if llm else ("rules" if rules.category else "none"),

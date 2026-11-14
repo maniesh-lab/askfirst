@@ -44,6 +44,10 @@ class Rubric(BaseModel):
         return cls.model_validate(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
 
     def label_allowed(self, label: str) -> bool:
+        # "area:*" is on the allowlist, but only the rubric's own areas count: otherwise text in
+        # a stranger's issue could steer the model into creating any `area:<anything>` label.
+        if label.startswith("area:") and label.removeprefix("area:") not in self.areas:
+            return False
         return any(fnmatch.fnmatchcase(label, pattern) for pattern in self.label_allowlist)
 
     def for_prompt(self) -> dict[str, Any]:
@@ -77,7 +81,7 @@ def apply_rules(
         result.reasons.append(f"no update for {stale_days} days")
     # Worked out before the skip rules: a security issue must never get a close proposal, even
     # one triaged long ago that has now gone stale.
-    hits = _has_any(issue.text, rules.get("security_words", []))
+    hits = _has_any(issue.rule_text, rules.get("security_words", []))
     is_security = bool(hits) or "type:security" in issue.labels
     if "triaged" in issue.labels and last_run is not None and issue.updated_at <= last_run:
         # Nothing new to classify, but it may still have gone stale (kept on the result).
@@ -89,19 +93,21 @@ def apply_rules(
         result.reasons.append("only changed by the triage bot since the last run")
         return result
 
-    if hits:
+    if is_security:
         result.category, result.priority, result.escalate = "security", "P0", True
         result.labels += ["type:security", "priority:P0"]
-        result.reasons.append(f"security words: {', '.join(hits[:3])}")
+        result.reasons.append(
+            f"security words: {', '.join(hits[:3])}" if hits else "labelled type:security"
+        )
 
-    looks_like_bug = bool(_has_any(issue.text, rules.get("bug_words", []))) or "bug" in " ".join(
-        issue.labels
-    )
+    looks_like_bug = bool(
+        _has_any(issue.rule_text, rules.get("bug_words", []))
+    ) or "bug" in " ".join(issue.labels)
     if looks_like_bug and result.category != "security":
         missing = [
             part
             for part, words in rules.get("bug_needs", {}).items()
-            if not _has_any(issue.body, words)
+            if not _has_any(issue.full_body or issue.body, words)
         ]
         if missing:
             result.needs_info, result.missing = True, missing

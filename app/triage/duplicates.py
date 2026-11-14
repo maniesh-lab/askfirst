@@ -67,7 +67,11 @@ def candidates(issue: Issue, others: list[Issue], top: int = TOP) -> list[tuple[
     scored = [
         (o.number, similarity(issue, o))
         for o in others
-        if o.number != issue.number and o.state == "open" and o.created_at <= issue.created_at
+        if o.number != issue.number
+        and o.state == "open"
+        # Older only. GitHub times are to the second, so a tie goes to the lower number: two
+        # issues filed in the same second can't each be proposed as the other's duplicate.
+        and (o.created_at, o.number) < (issue.created_at, issue.number)
     ]
     scored = [s for s in scored if s[1] >= THRESHOLD]
     return sorted(scored, key=lambda s: (-s[1], s[0]))[:top]

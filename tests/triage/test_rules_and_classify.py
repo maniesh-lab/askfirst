@@ -4,6 +4,7 @@ import json
 
 from app.config import Settings
 from app.runtime.llm import FakeProvider, make_llm
+from app.triage.actions import plan_actions
 from app.triage.classify import IssueClass, classify_all, merge
 from app.triage.duplicates import candidates, similarity
 from app.triage.models import RuleResult
@@ -151,3 +152,72 @@ def test_merge_rules_win_and_are_recorded(tmp_path) -> None:
     assert unclassified.unclassified and unclassified.source == "none"
     skipped = merge(issue(4, "x"), RuleResult(number=4, skip=True, reasons=["done"]), None, RUBRIC)
     assert skipped.skipped
+
+
+def test_stale_triaged_security_issue_gets_no_close_proposal_end_to_end() -> None:
+    # The rule alone was right in 1.0.1, but merge() dropped the flag on skipped results, so
+    # plan_actions still proposed closing the stale security report.
+    old = issue(9, "Stored XSS vulnerability", labels=["triaged", "type:security"], age_days=40)
+    rules = apply_rules(old, RUBRIC, NOW, last_run=NOW)
+    merged = merge(old, rules, None, RUBRIC)
+    assert merged.skipped and merged.stale and merged.escalate
+    assert plan_actions([merged], {9: old.labels}) == []
+
+
+def test_type_security_label_alone_escalates() -> None:
+    labelled = issue(4, "Something odd with sessions", "see title", labels=["type:security"])
+    r = apply_rules(labelled, RUBRIC, NOW)
+    assert (r.category, r.priority, r.escalate) == ("security", "P0", True)
+
+
+def test_llm_security_is_escalated_at_p0_without_public_asks() -> None:
+    # No rubric word, but the model says security: always P0, escalated, labels only.
+    plain = issue(5, "Crafted URL lets me read other users' files", "steps are private")
+    rules = apply_rules(plain, RUBRIC, NOW)
+    llm = IssueClass(
+        number=5,
+        category="security",
+        priority="P2",
+        labels=["area:api"],
+        needs_info=True,
+        missing=["steps"],
+        summary="s",
+        rationale='"read other users\' files"',
+    )
+    merged = merge(plain, rules, llm, RUBRIC)
+    assert merged.escalate and merged.priority == "P0" and not merged.needs_info
+    assert "needs-info" not in merged.labels
+    assert [a.kind for a in plan_actions([merged], {5: []})] == ["add_labels"]
+
+
+def test_rules_read_code_blocks_and_long_bodies() -> None:
+    in_code = issue(
+        6, "Dependency report", "Scanner says:\n```\nrequests remote code execution\n```"
+    )
+    late = issue(7, "Long report", "word " * 800 + "and an auth bypass at the end")
+    assert "remote code execution" not in in_code.body  # the LLM's copy hides the code block
+    assert "auth bypass" not in late.body  # and stops at 3000 characters
+    for hidden in (in_code, late):
+        assert apply_rules(hidden, RUBRIC, NOW).escalate
+
+
+def test_same_second_issues_are_not_each_others_duplicate() -> None:
+    a = issue(10, "Export to CSV crashes on big files", "out of memory", age_days=2)
+    b = issue(11, "Export to CSV crashes on big files", "out of memory", age_days=2)
+    assert a.created_at == b.created_at
+    assert [n for n, _ in candidates(b, [a, b])] == [10]
+    assert candidates(a, [a, b]) == []  # the lower number is the original
+
+
+def test_only_the_rubrics_own_areas_are_allowed() -> None:
+    assert RUBRIC.label_allowed("area:api")
+    assert not RUBRIC.label_allowed("area:free-crypto")
+
+
+def test_no_second_info_comment_while_needs_info_is_on() -> None:
+    bug = issue(8, "Search is broken", "It doesn't work.")
+    llm = IssueClass(number=8, category="bug", priority="P2", summary="s", rationale='"broken"')
+    merged = merge(bug, apply_rules(bug, RUBRIC, NOW), llm, RUBRIC)
+    assert "comment" in [a.kind for a in plan_actions([merged], {8: []})]
+    again = plan_actions([merged], {8: ["needs-info", "type:bug"]})
+    assert "comment" not in [a.kind for a in again]

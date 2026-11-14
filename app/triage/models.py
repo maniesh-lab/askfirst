@@ -11,6 +11,7 @@ Category = Literal["bug", "feature", "question", "docs", "chore", "security"]
 Priority = Literal["P0", "P1", "P2", "P3"]
 
 BODY_LIMIT = 3000
+FULL_BODY_LIMIT = 65536  # GitHub's own limit for an issue body
 CODE_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
 
 
@@ -34,6 +35,10 @@ class Issue(BaseModel):
     comments: int = 0
     url: str = ""
     state: Literal["open", "closed"] = "open"
+    # The body as written (capped at 64 KB), for the rules only. `body` is the shortened copy the
+    # LLM sees: code blocks become a marker and it stops at 3000 characters, so a security word
+    # in pasted scanner output or late in a long report would be missed if the rules read it.
+    full_body: str = ""
 
     @classmethod
     def from_github(cls, raw: dict[str, Any]) -> Issue:
@@ -41,6 +46,7 @@ class Issue(BaseModel):
             number=raw["number"],
             title=raw.get("title") or "",
             body=shorten_body(raw.get("body")),
+            full_body=(raw.get("body") or "")[:FULL_BODY_LIMIT],
             labels=[
                 lab["name"] if isinstance(lab, dict) else str(lab) for lab in raw.get("labels", [])
             ],
@@ -55,6 +61,11 @@ class Issue(BaseModel):
     @property
     def text(self) -> str:
         return f"{self.title}\n{self.body}"
+
+    @property
+    def rule_text(self) -> str:
+        """Title and the full body: what the keyword rules read."""
+        return f"{self.title}\n{self.full_body or self.body}"
 
 
 class RuleResult(BaseModel):
