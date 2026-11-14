@@ -106,3 +106,11 @@ def test_exit_code_follows_the_run_status(
     RunIndex.in_data_dir(tmp_path).create("form-1", status=RunStatus(run_status))
     settings = Settings(_env_file=None, data_dir=tmp_path)
     assert _exit_code(settings, "form-1", Outcome(status=graph_status)) == code
+
+
+def test_cli_turns_bad_input_into_one_line(capsys) -> None:
+    from app import cli
+
+    assert cli.main(["audit", "a/b"]) == 1  # a path, not a run id
+    err = capsys.readouterr().err
+    assert err.startswith("error:") and "Traceback" not in err

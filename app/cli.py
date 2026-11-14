@@ -745,6 +745,9 @@ def main(argv: list[str] | None = None) -> int:
     # API keys, the GitHub token, webhook URLs and passwords: masked wherever they turn up.
     register_secrets(settings.secret_values())
     handler: Callable[[Settings, argparse.Namespace], int] = args.handler
+    import yaml
+    from playwright.async_api import Error as PlaywrightError
+
     from app.browser.sites import UnknownForm
 
     # Typos in a path or form name, or a closed prompt, get one line instead of a traceback.
@@ -755,6 +758,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     except EOFError:
         print("\nno answer (input closed): nothing was decided", file=sys.stderr)
+        return 1
+    except (ValueError, LookupError, yaml.YAMLError, PlaywrightError) as exc:
+        # Bad input (a blank --reason, a broken site YAML), a run decided elsewhere in the
+        # meantime, or a site that isn't running: one line, never a traceback. ValueError covers
+        # pydantic's validation errors.
+        first = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
+        print(f"error: {first}", file=sys.stderr)
         return 1
 
 
