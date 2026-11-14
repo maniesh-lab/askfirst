@@ -81,7 +81,10 @@ def create_app(settings: PracticeSettings | None = None) -> FastAPI:
                 infos = []
                 for up in uploads:
                     if up.filename:
-                        infos.append({"name": up.filename, "size": len(await up.read())})
+                        size = 0  # counted in chunks: never the whole upload in memory
+                        while chunk := await up.read(1 << 16):
+                            size += len(chunk)
+                        infos.append({"name": up.filename, "size": size})
                 files[key] = infos
                 continue
             texts = [str(i) for i in items]
