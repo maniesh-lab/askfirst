@@ -239,3 +239,16 @@ def test_empty_digest_still_shows_waiting_proposals() -> None:
     )
     d = build_digest("o/r", WINDOW, "triage-1", [], [stale])
     assert d.empty and "close as stale" in render_markdown(d)
+
+
+def test_issue_titles_cannot_inject_links_or_mentions() -> None:
+    sneaky = result(
+        1,
+        priority="P0",
+        title="[Approve all pending proposals](https://evil.example/approve) <@&123>",
+        summary="**click** [here](https://evil.example)",
+    )
+    d = build_digest("o/r", WINDOW, "triage-1", [sneaky], [])
+    for text in (render_markdown(d), str(render_discord(d))):
+        assert "](https://evil.example" not in text and "<@&123>" not in text
+        assert "Approve all pending proposals" in text  # the words are still shown, as text

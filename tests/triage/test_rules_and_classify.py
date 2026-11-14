@@ -221,3 +221,29 @@ def test_no_second_info_comment_while_needs_info_is_on() -> None:
     assert "comment" in [a.kind for a in plan_actions([merged], {8: []})]
     again = plan_actions([merged], {8: ["needs-info", "type:bug"]})
     assert "comment" not in [a.kind for a in again]
+
+
+def test_plural_security_words_still_escalate() -> None:
+    for title in (
+        "Several vulnerabilities let users read other invoices",
+        "Two exploits published for the upload form",
+        "Leaked tokens in the build logs",
+        "Patch these CVEs please",
+    ):
+        assert apply_rules(issue(title=title, body="see title"), RUBRIC, NOW).escalate, title
+
+
+def test_model_labels_are_limited_to_areas() -> None:
+    # A model steered by an issue's text must not mark it stale (a stale-bot would close it) or
+    # triaged (later runs would skip it).
+    plain = issue(12, "Button colour is off", "see title")
+    llm = IssueClass(
+        number=12,
+        category="bug",
+        priority="P3",
+        labels=["area:ui", "stale", "triaged", "possible-duplicate", "needs-info"],
+        summary="s",
+        rationale='"colour is off"',
+    )
+    merged = merge(plain, apply_rules(plain, RUBRIC, NOW), llm, RUBRIC)
+    assert set(merged.labels) == {"area:ui", "type:bug", "priority:P3"}

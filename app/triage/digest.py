@@ -10,6 +10,7 @@
 An empty window still gets a one-line digest, so a working schedule is visibly alive.
 """
 
+import re
 from collections import Counter
 from typing import Any
 
@@ -88,12 +89,23 @@ def digest_hash(digest: Digest) -> str:
     return stable_hash(data)
 
 
+MARKDOWN_SPECIALS = re.compile(r"([\\`*_~|\[\]()<>#])")
+
+
+def md_text(text: str) -> str:
+    """Issue titles and the model's summaries as plain text in Discord and GitHub markdown:
+    anyone can open an issue, so `[Approve here](https://evil)` must not become a link inside
+    the bot's own message (and `<@&role>` must not become a mention chip)."""
+    return MARKDOWN_SPECIALS.sub(r"\\\1", text)
+
+
 def _issue_line(r: TriageResult, extra: str = "") -> str:
     tail = f" {extra}" if extra else ""
+    title = md_text(r.title)
     line = (
-        f"[#{r.number}]({r.url}) **{r.priority or '?'}** {r.title}{tail}"
+        f"[#{r.number}]({r.url}) **{r.priority or '?'}** {title}{tail}"
         if r.url
-        else f"#{r.number} {r.title}{tail}"
+        else f"#{r.number} {title}{tail}"
     )
     return line if len(line) <= LINE_LIMIT else line[: LINE_LIMIT - 1] + "…"
 
@@ -107,7 +119,7 @@ def sections(d: Digest) -> list[tuple[str, list[str]]]:
                 "🚨 Urgent (P0/P1)",
                 [
                     _issue_line(r, "**(escalated)**" if r.escalate else "")
-                    + (f" — {r.summary}" if r.summary else "")
+                    + (f" — {md_text(r.summary)}" if r.summary else "")
                     for r in d.urgent
                 ],
             )

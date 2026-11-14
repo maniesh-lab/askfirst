@@ -70,8 +70,13 @@ def load_prompt(name: str, version: str = "v1") -> str:
 
 
 def render_prompt(template: str, task: str, inputs: dict[str, Any]) -> str:
-    """Fill a prompt template: `{task}` and `{input}` (the inputs as pretty JSON in tags)."""
-    block = "<input>\n" + json.dumps(inputs, indent=2, ensure_ascii=False) + "\n</input>"
+    """Fill a prompt template: `{task}` and `{input}` (the inputs as pretty JSON in tags).
+
+    `<` and `>` inside the JSON are written as \\u003c / \\u003e (still the same JSON), so text
+    from an issue or a page can never close the `<input>` block and pose as instructions."""
+    data = json.dumps(inputs, indent=2, ensure_ascii=False)
+    data = data.replace("<", "\\u003c").replace(">", "\\u003e")
+    block = "<input>\n" + data + "\n</input>"
     return template.replace("{task}", task).replace("{input}", block)
 
 

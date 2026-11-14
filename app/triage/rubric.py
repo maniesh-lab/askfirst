@@ -59,9 +59,17 @@ class Rubric(BaseModel):
         }
 
 
+def _word_pattern(word: str) -> str:
+    """A rubric word as a whole word, plural included: "exploit" also finds "exploits",
+    "vulnerability" also finds "vulnerabilities", "key" also finds "keys"."""
+    w = re.escape(word.lower())
+    stem = w[:-1] + "(?:y|ys|ies)" if w.endswith("y") else w + "(?:s|es)?"
+    return rf"(?<![a-z]){stem}(?![a-z])"
+
+
 def _has_any(text: str, words: list[str]) -> list[str]:
     low = text.lower()
-    return [w for w in words if re.search(rf"(?<![a-z]){re.escape(w.lower())}(?![a-z])", low)]
+    return [w for w in words if re.search(_word_pattern(w), low)]
 
 
 def apply_rules(

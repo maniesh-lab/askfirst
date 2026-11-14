@@ -211,8 +211,15 @@ def merge(
             priority = "P0"
     if rules.needs_info and llm and not llm.needs_info:
         overrides.append("needs_info false -> true (rule)")
-    labels = {lab for lab in (llm.labels if llm else []) if rubric.label_allowed(lab)}
-    labels = {lab for lab in labels if not lab.startswith(("type:", "priority:"))}
+    # From the model, only area labels. Type and priority come from its validated category and
+    # priority; needs-info, possible-duplicate, stale and triaged only from rules and code (a
+    # model steered by an issue's text could otherwise mark issues "stale" for a stale-bot to
+    # close, or "triaged" so later runs skip them).
+    labels = {
+        lab
+        for lab in (llm.labels if llm else [])
+        if lab.startswith("area:") and rubric.label_allowed(lab)
+    }
     labels |= set(rules.labels)
     if category:
         labels.add(f"type:{category}")
