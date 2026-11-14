@@ -21,6 +21,7 @@ The browser identifies itself honestly: the User-Agent carries the app's name an
 """
 
 import asyncio
+import re
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -49,6 +50,15 @@ from app.runtime.audit import AuditLog
 log = structlog.get_logger(__name__)
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+# Everything else counts as a write: an allowlist, so PURGE, PROPPATCH or any made-up method a
+# page script sends during filling is blocked too, not only the four usual ones.
+SAFE_METHODS = {"GET", "HEAD"}
+# The browser's second wall: every host not on the allowlist is sent to this proxy, where
+# nothing listens. Playwright never shows our route handler the hops of a redirect chain a
+# sub-resource follows (an <img> or fetch() through an open redirect), nor preconnects or
+# WebRTC; at the proxy level they fail anyway. Port 9 is "discard"; nothing serves there.
+DEAD_PROXY = "http://127.0.0.1:9"
+WEBRTC_OFF = "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"
 REDIRECT_CODES = {301, 302, 303, 307, 308}
 # Browsers give up after about 20 hops; our own sites never need more than a couple.
 MAX_REDIRECTS = 10
@@ -128,6 +138,7 @@ class BrowserSession:
         headless: bool | None = None,
         storage_state: str | None = None,
         record_video_dir: str | None = None,
+        launch_args: list[str] | None = None,
     ) -> None:
         self.settings = settings
         self.run_id = run_id
@@ -137,6 +148,8 @@ class BrowserSession:
         self.headless = settings.headless if headless is None else headless
         self.storage_state = storage_state
         self.record_video_dir = record_video_dir
+        self.launch_args = list(launch_args or [])  # tests only (e.g. to turn off Chromium's
+        # own loopback protection, which would otherwise hide a gap in our checks)
         self.guard = Guard()
         self._pw: Playwright | None = None
         self.browser: Browser | None = None
@@ -152,7 +165,14 @@ class BrowserSession:
 
     async def _start(self) -> BrowserSession:
         self._pw = await async_playwright().start()
-        self.browser = await self._pw.chromium.launch(headless=self.headless)
+        # "<-loopback>" stops Chromium's implicit bypass for 127.0.0.0/8, so only the allowed
+        # hosts named here skip the dead proxy.
+        bypass = ",".join(["<-loopback>", *sorted(self.allowed_hosts)])
+        self.browser = await self._pw.chromium.launch(
+            headless=self.headless,
+            proxy={"server": DEAD_PROXY, "bypass": bypass},
+            args=[WEBRTC_OFF, *self.launch_args],
+        )
         options: dict[str, Any] = {
             "viewport": VIEWPORT,
             "locale": "en-US",
@@ -235,7 +255,7 @@ class BrowserSession:
             return
         method = request.method.upper()
         # Writes are blocked in every stage; only the exact allowed requests get through.
-        if method in WRITE_METHODS and not self.guard.write_allowed(method, url):
+        if method not in SAFE_METHODS and not self.guard.write_allowed(method, url):
             self._record(
                 "blocked_request",
                 reason=f"{method} during {self.guard.stage}",
@@ -276,9 +296,15 @@ class BrowserSession:
             location = response.headers.get("location")
             if response.status not in REDIRECT_CODES or not location:
                 return None
+            # Read the Location the way a browser does (WHATWG): a backslash is a slash, and
+            # tabs and newlines are dropped. Python's parser reads http://evil<backslash>@ok/ as
+            # host "ok" while Chromium goes to "evil". A user-info part is refused outright.
+            location = re.sub(r"[\t\n\r]", "", location.strip()).replace("\\", "/")
             url = urljoin(url, location)
+            parts = urlsplit(url)
             if (
-                urlsplit(url).scheme not in {"http", "https"}
+                parts.scheme not in {"http", "https"}
+                or "@" in parts.netloc
                 or host_of(url) not in self.allowed_hosts
             ):
                 return _strip_query(url)

@@ -284,3 +284,99 @@ async def test_common_hiding_tricks_are_never_fillable(settings: Settings) -> No
         assert not by_key[name].fillable, name
     assert [o.value for o in by_key["plan"].options] == ["a", "b"]  # the hidden "pro" isn't offered
     assert [o.text for o in by_key["city"].options] == ["Kathmandu"]
+
+
+class _Outside(BaseHTTPRequestHandler):
+    """A host that is NOT allowed (127.0.0.2). Any request it gets is a leak."""
+
+    hits: list[str] = []
+
+    def do_GET(self) -> None:  # noqa: N802 (http.server's name)
+        _Outside.hits.append(self.path)
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"outside")
+
+    def log_message(self, *args) -> None:
+        pass
+
+
+class _Allowed(BaseHTTPRequestHandler):
+    """An allowed host with an open redirect, a page that uses it, and a method counter."""
+
+    outside = ""
+    methods: list[str] = []
+
+    def _go(self) -> None:
+        _Allowed.methods.append(self.command)
+        if self.path.startswith("/redir?to="):
+            self.send_response(302)
+            self.send_header("Location", self.path.removeprefix("/redir?to="))
+            self.end_headers()
+            return
+        if self.path == "/backslash":
+            host, port = self.server.server_address
+            self.send_response(302)
+            self.send_header("Location", f"{_Allowed.outside}\\@{host}:{port}/x")
+            self.end_headers()
+            return
+        body = (
+            "<!doctype html><html><body><p>page</p>"
+            f'<img src="/redir?to={_Allowed.outside}/leak-img">'
+            f"<script>fetch('/redir?to={_Allowed.outside}/leak-fetch');"
+            "fetch('/x', {method: 'PURGE'});</script></body></html>"
+        ).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        self.wfile.write(body)
+
+    do_GET = _go
+    do_PURGE = _go  # noqa: N815
+
+    def log_message(self, *args) -> None:
+        pass
+
+
+@pytest.fixture
+def two_hosts():
+    _Outside.hits, _Allowed.methods = [], []
+    outside = ThreadingHTTPServer(("127.0.0.2", 0), _Outside)
+    allowed = ThreadingHTTPServer(("127.0.0.1", 0), _Allowed)
+    _Allowed.outside = f"http://127.0.0.2:{outside.server_address[1]}"
+    for server in (outside, allowed):
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{allowed.server_address[1]}"
+    for server in (outside, allowed):
+        server.shutdown()
+
+
+# Chromium's own Local Network Access check would also stop 127.0.0.1 -> 127.0.0.2 and hide a
+# gap in our checks; real outside hosts are public, so turn it off here.
+NO_LNA = [
+    "--disable-features=LocalNetworkAccessChecks,PrivateNetworkAccessSendPreflights,"
+    "PrivateNetworkAccessRespectPreflightResults,BlockInsecurePrivateNetworkRequests"
+]
+
+
+async def test_sub_resource_redirects_and_odd_methods_stay_inside(
+    tmp_path: Path, two_hosts: str
+) -> None:
+    settings = Settings(_env_file=None, data_dir=tmp_path, allowed_hosts="127.0.0.1")
+    async with BrowserSession(settings, run_id="form-test", launch_args=NO_LNA) as s:
+        page = await s.new_page()
+        await s.goto(page, f"{two_hosts}/page")
+        await page.wait_for_timeout(1500)
+    assert _Outside.hits == []  # the <img> and fetch() redirects never reached the outside host
+    assert "PURGE" not in _Allowed.methods  # an unusual method counts as a write
+
+
+async def test_backslash_redirect_is_read_like_the_browser_reads_it(
+    tmp_path: Path, two_hosts: str
+) -> None:
+    settings = Settings(_env_file=None, data_dir=tmp_path, allowed_hosts="127.0.0.1")
+    async with BrowserSession(settings, run_id="form-test", launch_args=NO_LNA) as s:
+        page = await s.new_page()
+        with pytest.raises(HostNotAllowed):
+            await s.goto(page, f"{two_hosts}/backslash")
+    assert _Outside.hits == []  # not even the redirect check's own probe
