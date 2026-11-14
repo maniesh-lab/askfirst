@@ -584,9 +584,17 @@ async def apply_edit(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
     decision = _log_decision(state, ctx)
     drop = {x.strip() for x in str(decision.edits.get("drop", "")).split(",") if x.strip()}
     actions = [PlannedAction.model_validate(a) for a in state["actions"]]
+    droppable = {a.id for a in pending(actions)}
     for a in actions:
-        if a.id in drop:
+        # Only proposals still waiting: an applied label can't be "dropped" (it is on the issue,
+        # and dropping it would only hide it from the digest's Applied list).
+        if a.id in drop and a.id in droppable:
             a.verdict = "dropped"
+    if ignored := sorted(drop - droppable):
+        ctx.audit.record(
+            state["run_id"], "agent:apply_edit", "edit_ignored", outcome="refused", ids=ignored
+        )
+        log.warning("triage_edit_ignored", ids=ignored, reason="not a waiting proposal")
     waiting = pending(actions)
     if not waiting:
         # Everything was dropped: no gate left, the run goes on to the digest.

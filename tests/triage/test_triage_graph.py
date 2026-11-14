@@ -403,6 +403,22 @@ async def test_dropping_every_proposal_finishes_the_run(tmp_path: Path) -> None:
     assert not [w for w in gh.writes if w[0] in ("close", "add_labels")]
 
 
+async def test_drop_ignores_ids_that_are_not_waiting(tmp_path: Path) -> None:
+    gh = sandbox_github()
+    async with open_triage_runner(
+        settings(tmp_path), github=gh, notifier=FakeNotifier(), durable=False, now=lambda: NOW
+    ) as runner:
+        run_id, packet = await waiting_run(runner)
+        out = await runner.resume(
+            run_id,
+            Decision(
+                choice="edit", reviewer="boss", edits={"drop": "nope-1"}, plan_hash=packet.plan_hash
+            ),
+        )
+    assert out.status == "waiting" and out.packet.plan_hash == packet.plan_hash  # nothing dropped
+    assert AuditLog(tmp_path).count(run_id, "edit_ignored") == 1
+
+
 def test_triage_cli_dry_run_with_output_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
