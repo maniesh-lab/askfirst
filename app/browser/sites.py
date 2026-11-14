@@ -5,12 +5,13 @@ gives the form's path, an optional login, the names of the "next" buttons, the e
 submit button, how to recognise success, and field overrides (`field_key -> profile path`).
 """
 
+import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from pydantic import Field as PField
 
 from app.config import Settings
@@ -26,6 +27,16 @@ class LoginSpec(BaseModel):
     # Names of the Settings attributes that hold the credentials (never the values).
     email_setting: str
     password_setting: str
+
+    @field_validator("email_setting", "password_setting")
+    @classmethod
+    def _login_settings_only(cls, name: str, info: Any) -> str:
+        # Only settings made for a site login: a profile naming `triage_github_token` (or an API
+        # key) must not get that secret typed into a web page.
+        wanted = "_email" if info.field_name == "email_setting" else "_password"
+        if not name.endswith(wanted):
+            raise ValueError(f"{info.field_name} must name a setting ending in {wanted!r}")
+        return name
 
 
 class SuccessRule(BaseModel):
@@ -93,6 +104,8 @@ def parse_target(text: str, settings: Settings, sites_dir: Path = SITES_DIR) -> 
     if not text.startswith("site:"):
         return Target(url=text)
     site_name, _, form_name = text.removeprefix("site:").partition("/")
+    if not re.fullmatch(r"[a-z0-9_-]+", site_name):
+        raise UnknownForm(f"site names are lower-case letters, digits, - and _ (got {site_name!r})")
     site = load_site(site_name, sites_dir)
     if form_name not in site.forms:
         raise UnknownForm(

@@ -148,6 +148,10 @@ class GitHubClient:
             items.extend(response.json())
             match = LINK_NEXT_RE.search(response.headers.get("Link", ""))
             next_url = match.group(1) if match else None
+            if next_url and not next_url.startswith(f"{API}/"):
+                # The token goes with every request: never follow a "next" link off GitHub's API.
+                log.warning("github_next_link_ignored")
+                next_url = None
         return items
 
     async def list_issues(

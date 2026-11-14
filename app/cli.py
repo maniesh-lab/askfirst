@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import getpass
 import json
+import re
 import sys
 from collections.abc import Callable
 from importlib.metadata import version
@@ -40,7 +41,17 @@ def cmd_version(settings: Settings, _args: argparse.Namespace) -> int:
     return 0
 
 
+CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def plain(value: object) -> str:
+    """Text from pages, issues and the LLM, safe to print: a terminal escape code in a page title
+    or an issue could otherwise rewrite or hide what the reviewer reads ("ESCALATE" -> "fine")."""
+    return CONTROL_CHARS.sub(" ", str(value))
+
+
 def print_table(rows: list[list[str]], headers: list[str]) -> None:
+    rows = [[plain(c) for c in row] for row in rows]
     widths = [max(len(str(x)) for x in col) for col in zip(headers, *rows, strict=False)]
     line = "  ".join(h.ljust(w) for h, w in zip(headers, widths, strict=True))
     print(line)
@@ -144,7 +155,7 @@ def cmd_detect(settings: Settings, args: argparse.Namespace) -> int:
         ]
         for f in step.fields
     ]
-    print(f"{step.title}  ({step.url})")
+    print(plain(f"{step.title}  ({step.url})"))
     print_table(rows, ["key", "kind", "label", "required", "fillable", "options"])
     print()
     print_table(
@@ -332,7 +343,7 @@ def cmd_review_show(settings: Settings, args: argparse.Namespace) -> int:
     if packet is None:
         print(f"{args.run_id} is not waiting for review", file=sys.stderr)
         return 1
-    print(packet.title)
+    print(plain(packet.title))
     for action in packet.actions:
         print(f"  will do: {action.summary} [{action.risk.value}]")
     rows = packet.details.get("rows")

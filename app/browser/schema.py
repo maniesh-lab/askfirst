@@ -146,6 +146,7 @@ class FormStep(BaseModel):
         shape = sorted(
             (
                 f.key,
+                f.name,  # a renamed field sends the same value under another name
                 f.kind,
                 f.label,
                 f.required,
@@ -153,7 +154,17 @@ class FormStep(BaseModel):
             )
             for f in self.fillable_fields()
         )
-        return stable_hash({"fields": shape, "action": self.form_action})
+        # Also what would be sent besides the fields: hidden inputs (names only; a CSRF token
+        # changes on every load), the method, and the buttons (name, value, kind).
+        return stable_hash(
+            {
+                "fields": shape,
+                "action": self.form_action,
+                "method": (self.form_method or "get").lower(),
+                "hidden": sorted(self.hidden_inputs),
+                "buttons": sorted((b.kind, b.text, b.name, b.value) for b in self.buttons),
+            }
+        )
 
 
 class FormSchema(BaseModel):

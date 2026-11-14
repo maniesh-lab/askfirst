@@ -91,7 +91,10 @@ def test_require_token_refuses_missing_wrong_plan_and_forged() -> None:
     token = issue_token(decision(), "h1", "r")
     with pytest.raises(ApprovalRequired):
         require_token(token, "h2")
-    forged = ApprovalToken.model_construct(**{**token.model_dump(), "plan_hash": "h2"})
+    with pytest.raises(TypeError):  # the pydantic back door is closed too
+        ApprovalToken.model_construct(**{**token.model_dump(), "plan_hash": "h2"})
+    # Forged below pydantic (copy a real token, change its plan): the signature still fails.
+    forged = token.model_copy(update={"plan_hash": "h2"})
     with pytest.raises(ApprovalRequired, match="signature"):
         require_token(forged, "h2")
 

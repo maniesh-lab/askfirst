@@ -114,3 +114,10 @@ def test_cli_turns_bad_input_into_one_line(capsys) -> None:
     assert cli.main(["audit", "a/b"]) == 1  # a path, not a run id
     err = capsys.readouterr().err
     assert err.startswith("error:") and "Traceback" not in err
+
+
+def test_printed_page_text_has_no_terminal_codes() -> None:
+    from app.cli import plain
+
+    shown = plain("#8 P0 security ESCALATE\x1b[2K\rP3 docs (fine)\x1b[8m")
+    assert "\x1b" not in shown and "\r" not in shown and "ESCALATE" in shown

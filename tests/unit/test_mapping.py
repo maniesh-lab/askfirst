@@ -303,3 +303,47 @@ def test_a_blank_data_cell_never_falls_back_to_the_persona() -> None:
     photos = Field(key="photos", name="photos", kind="file", label="Photos", visible=True)
     m = map_field(photos, Profile.load("profiles/example.yaml"), data={"photos": ""})
     assert m.status == "needs_human" and "leaves photos empty" in m.reason
+
+
+def test_schema_hash_sees_renamed_fields_hidden_inputs_and_buttons() -> None:
+    from app.browser.schema import Button, Field, FormStep
+
+    def step(**over) -> FormStep:
+        base = {
+            "index": 0,
+            "url": "u",
+            "title": "t",
+            "form_action": "/x",
+            "form_method": "post",
+            "fields": [Field(key="email", name="email", kind="email", label="Email")],
+            "buttons": [Button(text="Send", kind="submit")],
+            "hidden_inputs": {"csrf": ""},
+        }
+        return FormStep(**{**base, **over})
+
+    same = step().compute_hash()
+    assert step(hidden_inputs={"csrf": ""}).compute_hash() == same
+    changed = [
+        step(fields=[Field(key="email", name="email_2", kind="email", label="Email")]),
+        step(hidden_inputs={"csrf": "", "auto_renew": ""}),
+        step(buttons=[Button(text="Send", kind="submit", name="plan", value="pro")]),
+        step(form_method="get"),
+    ]
+    assert all(s.compute_hash() != same for s in changed)
+
+
+def test_site_names_and_login_settings_are_checked() -> None:
+    import pytest
+    from pydantic import ValidationError
+
+    from app.browser.sites import LoginSpec, UnknownForm, parse_target
+    from app.config import Settings
+
+    with pytest.raises(UnknownForm):
+        parse_target("site:../evil/x", Settings(_env_file=None))
+    with pytest.raises(ValidationError):  # a profile can't have a token typed into a page
+        LoginSpec(
+            url="/login",
+            email_setting="practice_seller_email",
+            password_setting="triage_github_token",
+        )

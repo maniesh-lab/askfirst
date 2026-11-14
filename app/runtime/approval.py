@@ -128,6 +128,10 @@ class ApprovalToken(BaseModel):
     def model_validate_json(cls, *args: Any, **kwargs: Any) -> ApprovalToken:
         raise TypeError("ApprovalToken can only be made by issue_token()")
 
+    @classmethod
+    def model_construct(cls, *args: Any, **kwargs: Any) -> ApprovalToken:
+        raise TypeError("ApprovalToken can only be made by issue_token()")
+
 
 def issue_token(decision: Decision, current_plan_hash: str, run_id: str) -> ApprovalToken:
     """A token for this run's current plan. Raises unless the decision approves that plan."""

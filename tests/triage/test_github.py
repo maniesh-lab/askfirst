@@ -123,3 +123,18 @@ async def test_fake_github_round_trip() -> None:
     await gh.add_labels("o/r", 1, ["triaged", "triaged"])
     await gh.close_issue("o/r", 1)
     assert await gh.list_issues("o/r", state="open") == []
+
+
+async def test_never_follows_a_next_link_off_githubs_api() -> None:
+    seen = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(str(request.url))
+        return httpx2.Response(
+            200,
+            json=json.loads((FIX / "issues_page2.json").read_text()),
+            headers={"Link": '<https://evil.example/steal?page=2>; rel="next"'},
+        )
+
+    await client(handler).list_issues("o/r")
+    assert len(seen) == 1 and all("evil" not in u for u in seen)  # the token stays home

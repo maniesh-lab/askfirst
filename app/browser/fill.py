@@ -181,6 +181,9 @@ async def _do(page: Page, step: FillStep) -> None:
             if opt.css:
                 await page.locator(opt.css).set_checked(opt.value in value)
     elif kind == "file":
+        # Checked again here, not only when the plan was made: the replay may run days later.
+        if not all(safe_file(v) for v in value):
+            raise ValueError("upload refused: files must be under profiles/files/")
         await loc.set_input_files([str(Path(v)) for v in value])
     elif kind == "aria_radio":
         opt = _option(step, str(value))
