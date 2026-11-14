@@ -32,15 +32,23 @@ LINK_NEXT_RE = re.compile(r'<([^>]+)>;\s*rel="next"')
 
 
 class GitHubError(Exception):
-    pass
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status  # the HTTP status GitHub answered with; None if no answer arrived
 
 
 class RateLimited(GitHubError):
     """GitHub asked us to wait longer than we are willing to (the run stops cleanly)."""
 
+    def __init__(self, message: str) -> None:
+        super().__init__(message, status=429)  # GitHub refused; nothing was done
+
 
 class ReadOnly(GitHubError):
     """A write was attempted in read-only mode."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, status=403)  # never sent
 
 
 class IssuesAPI(Protocol):
@@ -108,7 +116,8 @@ class GitHubClient:
             message = redact(response.text[:300], extra_secrets=known_secrets())
             raise GitHubError(
                 f"GitHub answered {response.status_code} for {method} "
-                f"{full.replace(API, '')}: {message}"
+                f"{full.replace(API, '')}: {message}",
+                status=response.status_code,
             )
         return response
 

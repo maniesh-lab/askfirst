@@ -139,7 +139,9 @@ async def test_a_failing_github_write_is_listed_and_the_rest_still_runs(tmp_path
     class OneBadIssue(type(sandbox_github())):
         async def add_labels(self, repo, number, labels):
             if number == 1:
-                raise GitHubError("GitHub answered 403 for POST /repos/o/sandbox/issues/1/labels")
+                raise GitHubError(
+                    "GitHub answered 403 for POST /repos/o/sandbox/issues/1/labels", status=403
+                )
             await super().add_labels(repo, number, labels)
 
     gh = OneBadIssue(sandbox_github().issues.values())
@@ -526,3 +528,65 @@ async def test_real_runner_without_a_token_is_read_only(tmp_path: Path) -> None:
         settings(tmp_path), notifier=FakeNotifier(), durable=False
     ) as runner:
         assert runner.context.github.read_only
+
+
+async def test_a_write_that_may_have_landed_is_unsure_not_failed(tmp_path: Path) -> None:
+    from app.triage.github import GitHubError
+
+    class TimesOut(type(sandbox_github())):
+        async def add_labels(self, repo, number, labels):
+            if number == 1:  # the request went out, the answer never came back
+                await super().add_labels(repo, number, labels)
+                raise GitHubError("GitHub request failed: ReadTimeout")
+            await super().add_labels(repo, number, labels)
+
+    gh = TimesOut(sandbox_github().issues.values())
+    run_id, out, _ = await run(tmp_path, gh, since="60d", write_mode="apply-labels")
+    digest = out.values["digest"]
+    assert [a["issue"] for a in digest["unsure"]] == [1] and not digest["failed"]
+    assert RunIndex.in_data_dir(tmp_path).get(run_id).status is RunStatus.NEEDS_HUMAN_CHECK
+
+
+async def test_a_failed_state_read_fails_the_run_instead_of_starting_over(tmp_path: Path) -> None:
+    from app.triage.github import GitHubError
+
+    gh = sandbox_github()
+    _, first, _ = await run(tmp_path, gh, since="60d")
+    assert first.values["log_issue"]
+
+    class StateUnreadable(type(gh)):
+        async def list_comments(self, repo, number):
+            raise GitHubError("GitHub answered 502 for GET comments", status=502)
+
+    flaky = StateUnreadable(gh.issues.values())
+    _, out, notifier = await run(tmp_path, flaky)
+    assert out.status == "failed" and "502" in out.error
+    logs = [i for i in flaky.issues.values() if i["title"] == "Triage log (bot)"]
+    assert len(logs) == 1 and not notifier.sent  # no second log issue, no digest
+
+
+async def test_llm_down_keeps_the_window_and_fails_the_run(tmp_path: Path) -> None:
+    from app.runtime.llm import make_llm
+    from tests.test_failure_behaviour import DownProvider
+
+    gh = sandbox_github()
+    llm = make_llm(settings(tmp_path), provider=DownProvider())
+    async with open_triage_runner(
+        settings(tmp_path),
+        github=gh,
+        llm=llm,
+        notifier=FakeNotifier(),
+        durable=False,
+        now=lambda: NOW,
+    ) as runner:
+        _, out = await runner.start("o/sandbox", since="60d")
+    assert out.values["llm_down"] and out.values["outcome"] == "llm_down"
+    assert out.values.get("log_issue") is None  # the window was not saved: nothing is skipped
+
+
+async def test_a_partly_posted_digest_is_not_posted(tmp_path: Path) -> None:
+    gh = sandbox_github()
+    notifier = FlakyNotifier(fail=1)  # the first message (headline, urgent issues) is lost
+    _, out, _ = await run(tmp_path, gh, notifier, since="60d")
+    assert notifier.sent  # the later parts did go out
+    assert out.values["post_failed"] and out.values.get("log_issue") is None

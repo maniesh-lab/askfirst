@@ -99,6 +99,7 @@ class TriageState(TypedDict, total=False):
     candidates: dict[str, list[list[Any]]]
     llm: dict[str, dict[str, Any]]
     unclassified: list[int]
+    llm_down: bool  # no issue could be classified: the window is not saved
     results: list[dict[str, Any]]
     actions: list[dict[str, Any]]
     log_issue: int | None
@@ -181,6 +182,11 @@ async def load_state(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
         try:
             log_number, last = await last_state(ctx.github, state["repo"])
         except GitHubError as exc:
+            if stateful(state, ctx):
+                # Carrying on would look like a first run: a 7-day window (issues since an older
+                # last run silently missed), every stale issue again, and a second log issue
+                # whose state later runs never read. Fail instead; the next run starts over.
+                raise
             log.warning("triage_state_unreadable", error=str(exc))
     try:
         repo_private = bool((await ctx.github.get_repo(state["repo"])).get("private", True))
@@ -300,6 +306,9 @@ async def classify(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
     return {
         "llm": {str(k): v.model_dump() for k, v in results.items()},
         "unclassified": failed,
+        # Not one issue classified (a revoked key, the provider down): the digest still goes out
+        # (the rules' escalations matter), but the window is not saved and the run exits 1.
+        "llm_down": bool(todo) and not results,
     }
 
 
@@ -377,8 +386,16 @@ async def _run_actions(
                 a, ctx.github, state["repo"], token=token, plan_hash=state.get("plan_hash", "")
             )
             a.applied = True
-        except (GitHubError, ApprovalRequired) as exc:
+        except ApprovalRequired as exc:
             a.error = str(exc)[:200]
+        except GitHubError as exc:
+            # A clear refusal (4xx, read-only, rate limited) changed nothing. A timeout, a lost
+            # connection or a 5xx may have landed after GitHub got the request, and so may the
+            # comment of a duplicate close whose close step failed: never report those as "not
+            # applied" (a second approval would post the comment twice).
+            refused = exc.status is not None and 400 <= exc.status < 500
+            partial = a.kind == "close_issue" and bool(a.params.get("duplicate_of"))
+            a.error = str(exc)[:200] if refused and not partial else UNSURE
         ctx.audit.record(
             state["run_id"],
             "agent:apply",
@@ -649,15 +666,17 @@ async def post_digest(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
             # One bad message must not lose the rest (or the run's state).
             errors.append(str(exc)[:200])
             log.warning("digest_message_failed", part=n + 1, error=str(exc))
-    if sent == 0:
+    if errors:
         ctx.audit.record(
             state["run_id"],
             "agent:post_digest",
             "digest_post_failed",
             outcome="failed",
+            sent=sent,
             errors=errors,
         )
-        # Not marked as posted, so no state is written and the next run posts it again.
+        # Not marked as posted (even if some parts went out: the lost one may be the headline
+        # and the urgent issues), so no state is written and the next run posts it all again.
         return {"post_failed": True}
     ctx.audit.record(
         state["run_id"],
@@ -673,6 +692,11 @@ async def post_digest(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
 async def write_state(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
     if state.get("post_failed"):
         return {"outcome": "post_failed"}
+    if state.get("llm_down"):
+        ctx.audit.record(
+            state["run_id"], "agent:write_state", "state_not_saved", reason="no issue classified"
+        )
+        return {"outcome": "llm_down"}
     if stateful(state, ctx) and not state.get("skipped_post"):
         digest = Digest.model_validate(state["digest"])
         summary = f"Run `{state['run_id']}`: {headline(digest)}"

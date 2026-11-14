@@ -220,6 +220,9 @@ def _exit_code(settings: Settings, run_id: str, outcome) -> int:
     through, still ends the graph normally, so the run index is the one to ask."""
     if outcome.status == "failed":
         return 1
+    values = outcome.values or {}
+    if values.get("post_failed") or values.get("llm_down"):
+        return 1  # triage after approve/continue: the digest or the window wasn't saved
     run = RunIndex.in_data_dir(settings.data_dir).get(run_id)
     bad = {RunStatus.FAILED, RunStatus.NEEDS_HUMAN_CHECK}
     return 1 if run is not None and run.status in bad else 0
@@ -613,6 +616,9 @@ async def _triage(settings: Settings, args: argparse.Namespace) -> int:
         print_triage_table(results)
     if outcome.values.get("post_failed"):
         print("\nthe digest could not be posted to Discord (see the log); no state was saved")
+        return 1
+    if outcome.values.get("llm_down"):
+        print("\nno issue could be classified (is the LLM key valid?); no state was saved")
         return 1
     if outcome.status == "waiting":
         print(

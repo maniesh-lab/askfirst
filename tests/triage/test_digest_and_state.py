@@ -212,3 +212,30 @@ def test_markdown_digest_matches_snapshot() -> None:
     if os.environ.get("UPDATE_SNAPSHOTS"):
         snapshot.write_text(rendered, encoding="utf-8")
     assert rendered == snapshot.read_text(encoding="utf-8")
+
+
+def test_cap_pops_until_the_last_message_fits() -> None:
+    from app.triage.digest import MAX_MESSAGE_CHARS, embed_size
+
+    digest = build_digest("o/r", WINDOW, "triage-1", [result(1)], [])
+    big = [
+        {"title": "a", "description": "x" * 3000},
+        {"title": "b", "description": "x" * 2950},
+        {"title": "c", "description": "x" * 10},  # smaller than the note that replaces it
+    ]
+    capped = cap_messages([big, [{"title": "d", "description": "y"}]], digest, limit=1)
+    assert sum(map(embed_size, capped[-1])) <= MAX_MESSAGE_CHARS
+
+
+def test_empty_digest_still_shows_waiting_proposals() -> None:
+    from app.triage.models import PlannedAction
+
+    stale = PlannedAction(
+        id="close-stale-3",
+        kind="close_issue",
+        issue=3,
+        verdict="defer",
+        summary="#3: close as stale",
+    )
+    d = build_digest("o/r", WINDOW, "triage-1", [], [stale])
+    assert d.empty and "close as stale" in render_markdown(d)

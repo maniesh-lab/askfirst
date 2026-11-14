@@ -164,7 +164,7 @@ def footer(d: Digest) -> str:
 
 def render_markdown(d: Digest) -> str:
     lines = [f"## {headline(d)}", ""]
-    if d.empty:
+    if d.empty and not list(sections(d)):
         lines += [f"_{footer(d)}_", ""]
         return "\n".join(lines)
     lines += ["| Priority | Count |", "|---|---|"]
@@ -281,7 +281,10 @@ def cap_messages(
         "color": COLORS[None],
     }
     last = kept[-1]
-    if len(last) == MAX_EMBEDS or sum(map(embed_size, last)) + embed_size(note) > MAX_MESSAGE_CHARS:
+    # Pop until the note fits: one popped embed may be smaller than the note itself.
+    while last and (
+        len(last) >= MAX_EMBEDS or sum(map(embed_size, last)) + embed_size(note) > MAX_MESSAGE_CHARS
+    ):
         left_out += 1
         note["description"] = f"{left_out} more sections are not shown here.{where}"
         last.pop()
