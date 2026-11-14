@@ -87,6 +87,31 @@ async def test_bad_edit_is_reported_not_applied(settings: Settings, site) -> Non
         )
     warnings = edited.packet.details["warnings"]
     assert any("Mars" in w for w in warnings) and any("nope: no such field" in w for w in warnings)
+    # Nothing was applied, so the review must not claim the reviewer changed values.
+    assert not any("changed by the reviewer" in w for w in warnings)
+    assert edited.packet.plan_hash == out.packet.plan_hash
+
+
+async def test_edit_reaches_fields_on_earlier_steps(settings: Settings, site) -> None:
+    """A multi-step form keeps every step in the page, so each key is seen once per step but is
+    only fillable on its own step. An edit must find that one, not the last (hidden) copy."""
+    from app.browser.runner import load_batch_rows
+    from app.browser.sites import parse_target
+
+    spec = parse_target("site:practice/marketplace", settings).form
+    [row] = load_batch_rows("config/products.example.csv", spec.data_columns)[:1]
+    async with open_form_runner(settings, durable=False) as runner:
+        run_id, out = await runner.start("site:practice/marketplace", PROFILE, data=row)
+        edited = await runner.resume(
+            run_id,
+            approve(out.packet, "edit", edits={"listing_title": "Edited lamp", "price": "2222"}),
+        )
+        assert not [w for w in edited.packet.details["warnings"] if "can't be filled" in w]
+        assert edited.packet.plan_hash != out.packet.plan_hash
+        done = await runner.resume(run_id, approve(edited.packet))
+    assert done.status == "done"
+    [sub] = site.submissions()
+    assert sub["data"]["title"] == "Edited lamp" and sub["data"]["price"] == "2222"
 
 
 async def test_page_changed_after_approval_goes_back_to_review(settings: Settings, site) -> None:

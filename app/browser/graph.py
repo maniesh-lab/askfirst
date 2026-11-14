@@ -514,12 +514,18 @@ async def apply_edit(state: FormState, ctx: FormContext) -> dict[str, Any]:
     fields: dict[str, tuple[int, Field]] = {}
     for step in state["schema"]:
         for f in FormStep.model_validate(step).fields:
-            fields[f.key] = (step["index"], f)
+            # A multi-step form keeps every step in the page, so the same key is seen once per
+            # step but only has a locator on its own (visible) step. Keep that copy, not the last.
+            if f.key not in fields or (fields[f.key][1].locator is None and f.locator is not None):
+                fields[f.key] = (step["index"], f)
     problems = apply_edits(plan, decision.edits, fields, decision.reviewer)
     plan.plan_hash = plan.compute_hash()
     warnings = [w for w in state.get("warnings", []) if not w.startswith("edit:")]
     warnings += [f"edit: {p}" for p in problems]
-    warnings.append("edit: values were changed by the reviewer after the screenshots were taken")
+    if len(problems) < len(decision.edits):  # at least one edit was applied
+        warnings.append(
+            "edit: values were changed by the reviewer after the screenshots were taken"
+        )
     edited = set(decision.edits)
     return {
         "plan": plan.model_dump(mode="json"),
