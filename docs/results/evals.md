@@ -4,7 +4,7 @@ Every accuracy claim about askfirst points to a row here, and every row points t
 in `eval/results/` that a script wrote. Rerun any of them with the command in its row.
 
 - **Date**: 2026-11-08
-- **Commit**: first run in Phase 8; all three evals re-run after the mapping fix for
+- **Commit**: first run on 2026-11-08; all three evals re-run after the mapping fix for
   free-text questions and gave exactly the same results files. (The git history was condensed to one commit per phase on 2026-11-09, so older commit hashes no longer exist.)
 - **Model**: the Summary table is **offline**: the fake LLM provider (`LLM_PROVIDER=fake`),
   which answers from keyword rules. The live runs on Groq (`openai/gpt-oss-20b`, 2026-11-12)

@@ -1,6 +1,6 @@
 # Run timings
 
-Measured 2026-11-08 during Phase 9 with `python -m scripts.measure_runs` (median of
+Measured 2026-11-08 with `python -m scripts.measure_runs` (median of
 3 runs), on a laptop (Intel i5-13500H, 16 threads, Arch Linux), headless Chromium, **fake LLM**.
 
 | Run | Median of 3 | Tokens (fake LLM) |

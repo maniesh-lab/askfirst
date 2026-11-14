@@ -1,9 +1,9 @@
-# Real form, end to end (Done-when #1)
+# Real form, end to end
 
 **The claim**: the browser agent fills a real form end to end and pauses before submitting.
 After approval, even after a restart, it submits exactly once.
 
-**Proven** on 2026-11-08 with the code as of the end of Phase 10, on our practice site deployed on Render's free
+**Proven** on 2026-11-08 with the code as of that day, on our practice site deployed on Render's free
 plan at `https://askfirst-practice.onrender.com` (a public website we own; built from
 `render.yaml`). The agent ran on a laptop (Arch Linux, headless Chromium) with
 `ALLOWED_HOSTS=127.0.0.1,localhost,askfirst-practice.onrender.com`, the fake persona from

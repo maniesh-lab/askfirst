@@ -2,7 +2,7 @@ name: Triage digest
 
 on:
   schedule:
-    # Weekdays 02:23 UTC = 08:08 in Nepal. Off the top of the hour, when GitHub's queue is quieter.
+    # Weekdays at 02:23 UTC. Off the top of the hour, when GitHub's queue is quieter.
     # GitHub may delay scheduled runs, and turns schedules off in public repos after 60 days
     # without activity.
     - cron: "23 2 * * 1-5"

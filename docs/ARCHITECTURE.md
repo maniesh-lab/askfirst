@@ -38,12 +38,12 @@ flowchart LR
   A -->|"Playwright, allowlisted hosts only"| SITE["Our practice site<br/>(or a form you own)"]
   B -->|"REST API, fine-grained token"| GH["GitHub issues"]
   NT --> DC["Discord"]
-  LLM --> GROQ["Groq (default) · OpenAI or Anthropic (optional, paid) · fake (tests)"]
+  LLM --> GROQ["fake (default, offline) · Groq (live use) · OpenAI or Anthropic (optional, paid)"]
 ```
 
 | Part | What it does | Code |
 |---|---|---|
-| **CLI** | Every entry point: `fill`, `review list/show/approve/reject/edit`, `runs`, `audit`, `triage run`. It only parses arguments and prints; the work is in the modules. | `app/cli.py` |
+| **CLI** | Every entry point: `detect`, `plan`, `fill`, `fill-batch`, `review list/show/approve/reject/edit`, `runs`, `audit`, `triage run`, `version`. It only parses arguments and prints; the work is in the modules. | `app/cli.py` |
 | **Module A** | Detect fields, map them to the profile, draft free text, fill, verify, review, then replay and submit after approval. | `app/browser/` |
 | **Module B** | Fetch issues, rules, duplicates, LLM classification, merge, plan actions, policy, digest, state. | `app/triage/` |
 | **Shared runtime** | The approval layer, audit log, logging, checkpoints, run index, LLM wrapper, notifier, graph helpers. | `app/runtime/` |

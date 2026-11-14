@@ -1,4 +1,4 @@
-# Coverage target for app/ (PLAN Phase 9): Codecov marks the commit red below 85%.
+# Coverage target for app/: Codecov marks the commit red below 85%.
 # The unit and browser CI jobs upload separately (flags); Codecov merges them per commit.
 coverage:
   status:

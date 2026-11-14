@@ -1,4 +1,4 @@
-# Scheduled triage run (Done-when #2)
+# Scheduled triage run
 
 **The claim**: the triage bot runs on its own timer, with nobody starting it, and the run goes
 green with the digest posted to Discord.

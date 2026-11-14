@@ -100,12 +100,12 @@ page.
 
 **On a schedule, with nobody starting it** (2026-11-12,
 [docs/results/schedule-proof.md](docs/results/schedule-proof.md)): GitHub's timer started the
-triage workflow, which picked up the last window, found nothing new and posted its digest to
+triage workflow (from a one-off cron line added to the same workflow for the proof), which picked up the last window, found nothing new and posted its digest to
 Discord. The run went green. (GitHub started it 7.7 hours late; scheduled runs are a morning
 summary, not an alarm.)
 
 **The first live triage run** (2026-11-12, [docs/results/live-triage-run.md](docs/results/live-triage-run.md)):
-29 issues in a sandbox repo of fake issues, 6 Groq calls, 142 s. Both security reports escalated,
+a sandbox repo of 30 fake issues (29 in the window), 6 Groq calls, 142 s. Both security reports escalated,
 2 issues flagged as missing details, 1 duplicate found (it missed a second one), 32 proposals and
 **0 changes** to any issue.
 
@@ -218,13 +218,13 @@ All commands are `python -m app.cli <command>`; `--help` on any of them lists ev
 | `fill <target>` | Fill a form and stop for review. `--headed` shows the browser, `--wait` asks approve/reject in the terminal, `--profile` picks a profile |
 | `fill-batch <target> --data rows.csv` | One form run per CSV row (e.g. marketplace listings); each waits for its own review |
 | `review list` / `show <run_id>` | Runs waiting for a person, and what one will do |
-| `review approve <run_id>...` | Approve; it submits now. `--plan-hash` refuses if the plan changed since you looked; `--all-clean` approves every form run with zero flags (asks first) |
+| `review approve <run_id>...` | Approve; it submits now. `--plan-hash` refuses if the plan changed since you looked; `--all-clean` approves every form run with zero flags (asks first; `--yes` skips the question) |
 | `review edit <run_id> --set field=value` | Change values (the field names `review show` lists) and review again; for triage, `--set drop=<id>,<id>` drops proposals |
 | `review reject <run_id> --reason "..."` | Nothing is submitted |
 | `runs list` / `show <run_id>` | Recent runs and their status |
 | `runs continue <run_id>` | Carry on a run that stopped mid-way (a run killed after its click ends as "check the site", never a second click) |
 | `audit <run_id>` | The run's full timeline: who or which step did what |
-| `triage run` | Triage a repo. `--since 7d`, `--dry-run`, `--read-only`, `--interactive` (proposals wait for `review approve`), `--mode propose\|apply-labels`, `--output-dir` |
+| `triage run` | Triage a repo. `--since 7d`, `--dry-run`, `--read-only`, `--unattended` (cron mode, the default) or `--interactive` (proposals wait for `review approve`), `--mode propose\|apply-labels`, `--force` (post the digest again), `--output-dir` |
 
 ## Safety and ethics
 
