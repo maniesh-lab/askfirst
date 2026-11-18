@@ -35,7 +35,9 @@ def test_runs_list_show_and_audit(data_dir: Path, capsys: pytest.CaptureFixture[
     assert cli.main(["audit", "form-20261103-0831-abcd"]) == 0
     out = capsys.readouterr().out
     assert "started" in out and "[failed]" in out and "..." in out
-    assert cli.main(["runs", "show", "nope"]) == 1
+    assert (
+        cli.main(["runs", "show", "nope"]) == 2
+    )  # a missing run is a usage error, like `runs continue`
     assert cli.main(["audit", "nope"]) == 1
 
 

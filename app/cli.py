@@ -77,7 +77,7 @@ def cmd_runs_show(settings: Settings, args: argparse.Namespace) -> int:
     run = RunIndex.in_data_dir(settings.data_dir).get(args.run_id)
     if run is None:
         print(f"no run {args.run_id}", file=sys.stderr)
-        return 1
+        return 2
     paths = RunPaths.for_run(settings.data_dir, run.id)
     print(json.dumps(run.model_dump(mode="json"), indent=2))
     print(f"folder: {paths.root}")
@@ -374,7 +374,10 @@ def cmd_review_show(settings: Settings, args: argparse.Namespace) -> int:
         return 1
     print(plain(packet.title))
     for action in packet.actions:
-        print(f"  will do: {action.summary} [{action.risk.value}]")
+        ident = f"{action.id}: " if packet.kind == "triage" else ""
+        print(f"  will do: {ident}{action.summary} [{action.risk.value}]")
+    if packet.kind == "triage" and packet.actions:
+        print(f"  drop some with: review edit {args.run_id} --set drop=<id>,<id>")
     rows = packet.details.get("rows")
     if rows:
         table = []
@@ -532,15 +535,16 @@ def cmd_review_edit(settings: Settings, args: argparse.Namespace) -> int:
             return 2
         edits[key.strip()] = value
     reviewer = args.reviewer or getpass.getuser()
-    return asyncio.run(
-        _decide(
-            settings,
-            args.run_id,
-            lambda p: Decision(
-                choice="edit", reviewer=reviewer, edits=edits, plan_hash=p.plan_hash
-            ),
-        )
-    )
+
+    def make(p):
+        if p.kind == "triage" and edits.get("drop"):
+            known = {a.id for a in p.actions}
+            unknown = [i.strip() for i in edits["drop"].split(",") if i.strip() not in known]
+            if unknown:
+                print(f"warning: not a waiting proposal, ignored: {', '.join(unknown)}")
+        return Decision(choice="edit", reviewer=reviewer, edits=edits, plan_hash=p.plan_hash)
+
+    return asyncio.run(_decide(settings, args.run_id, make))
 
 
 def cmd_runs_continue(settings: Settings, args: argparse.Namespace) -> int:
@@ -719,21 +723,33 @@ def build_parser() -> argparse.ArgumentParser:
     detect.set_defaults(handler=cmd_detect)
 
     plan = commands.add_parser("plan", help="show how each field would be filled (dry run)")
-    plan.add_argument("target")
-    plan.add_argument("--profile", default="profiles/example.yaml")
+    plan.add_argument("target", help="a URL or site:<site>/<form>")
+    plan.add_argument(
+        "--profile",
+        default="profiles/example.yaml",
+        help="the persona YAML (default: the fake example persona)",
+    )
     plan.set_defaults(handler=cmd_plan)
 
     fill = commands.add_parser("fill", help="fill a form and stop for review before submitting")
-    fill.add_argument("target")
-    fill.add_argument("--profile", default="profiles/example.yaml")
+    fill.add_argument("target", help="a URL or site:<site>/<form>")
+    fill.add_argument(
+        "--profile",
+        default="profiles/example.yaml",
+        help="the persona YAML (default: the fake example persona)",
+    )
     fill.add_argument("--headed", action="store_true", help="show the browser window")
     fill.add_argument("--wait", action="store_true", help="ask approve/reject in this terminal")
     fill.set_defaults(handler=cmd_fill)
 
     batch = commands.add_parser("fill-batch", help="one form run per row of a CSV file")
-    batch.add_argument("target")
+    batch.add_argument("target", help="a URL or site:<site>/<form>")
     batch.add_argument("--data", required=True, help="CSV file, e.g. config/products.example.csv")
-    batch.add_argument("--profile", default="profiles/example.yaml")
+    batch.add_argument(
+        "--profile",
+        default="profiles/example.yaml",
+        help="the persona YAML (default: the fake example persona)",
+    )
     batch.set_defaults(handler=cmd_fill_batch)
 
     review = commands.add_parser("review", help="decide on runs waiting for a person")
@@ -754,18 +770,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--plan-hash",
         help="the plan hash (or its start) shown by `review show`; refuses if it changed",
     )
-    appr.add_argument("--note")
-    appr.add_argument("--reviewer")
+    appr.add_argument("--note", help="a note saved with the decision in the audit log")
+    appr.add_argument("--reviewer", help="who decided (default: your login name)")
     appr.set_defaults(handler=cmd_review_approve)
     rej = rsub.add_parser("reject", help="reject a run (nothing is submitted)")
     rej.add_argument("run_id")
     rej.add_argument("--reason", required=True)
-    rej.add_argument("--reviewer")
+    rej.add_argument("--reviewer", help="who decided (default: your login name)")
     rej.set_defaults(handler=cmd_review_reject)
     edit = rsub.add_parser("edit", help="change values, then review again")
     edit.add_argument("run_id")
     edit.add_argument("--set", action="append", required=True, metavar="KEY=VALUE")
-    edit.add_argument("--reviewer")
+    edit.add_argument("--reviewer", help="who decided (default: your login name)")
     edit.set_defaults(handler=cmd_review_edit)
 
     triage = commands.add_parser("triage", help="the GitHub issue triage bot")
