@@ -89,6 +89,7 @@ async def login(
     path = storage_path(settings, target)
     path.parent.mkdir(parents=True, exist_ok=True)
     await page.context.storage_state(path=str(path))
+    path.chmod(0o600)  # the saved session cookie logs anyone in: only this user may read it
     log.info("logged_in", site=target.site.name if target.site else None)
     if audit and run_id:
         audit.record(run_id, "agent:login", "login", site=target.site.name if target.site else "")

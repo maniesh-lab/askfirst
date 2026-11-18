@@ -300,6 +300,8 @@ async def test_marketplace_login_three_steps_stops_before_publish(settings: Sett
     assert done.status == "done"
     [row] = site.submissions()
     assert row["form"] == "listing" and row["data"]["title"] == "Practice desk lamp"
+    cookie = Path(settings.data_dir) / "storage" / "practice.json"
+    assert cookie.stat().st_mode & 0o077 == 0  # the saved login: readable by this user only
     assert row["data"]["photos"] == [
         {"name": "product.png", "size": Path("profiles/files/product.png").stat().st_size}
     ]
