@@ -143,10 +143,15 @@ async def classify_all(
     *,
     run_id: str | None = None,
     max_attempts: int = 3,
-) -> tuple[dict[int, IssueClass], list[int]]:
-    """Classify in batches; split a failing batch into singles. Returns (results, unclassified)."""
+) -> tuple[dict[int, IssueClass], list[int], bool]:
+    """Classify in batches; split a failing batch into singles.
+
+    Returns (results, unclassified, provider_failed). `provider_failed` is True when a call got
+    no answer from any provider, as opposed to answers that kept failing the checks (an issue
+    too short to quote, say), which only that issue's text can cause."""
     out: dict[int, IssueClass] = {}
     failed: list[int] = []
+    provider_failed = False
     for start in range(0, len(issues), BATCH_SIZE):
         batch = issues[start : start + BATCH_SIZE]
         try:
@@ -156,7 +161,8 @@ async def classify_all(
                 )
             )
             continue
-        except LLMFailed:
+        except LLMFailed as exc:
+            provider_failed |= exc.provider_failed
             if len(batch) == 1:
                 failed.append(batch[0].number)
                 continue
@@ -167,9 +173,10 @@ async def classify_all(
                         llm, [issue], cands, rubric, run_id=run_id, max_attempts=max_attempts
                     )
                 )
-            except LLMFailed:
+            except LLMFailed as exc:
+                provider_failed |= exc.provider_failed
                 failed.append(issue.number)
-    return out, failed
+    return out, failed, provider_failed
 
 
 def merge(

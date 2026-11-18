@@ -59,10 +59,20 @@ INPUT_RE = re.compile(r"<input>\s*(.*?)\s*</input>", re.DOTALL)
 class LLMFailed(Exception):
     """The LLM gave no usable answer (kept failing validation, or every provider failed)."""
 
-    def __init__(self, message: str, *, attempts: int = 0, errors: list[str] | None = None):
+    def __init__(
+        self,
+        message: str,
+        *,
+        attempts: int = 0,
+        errors: list[str] | None = None,
+        provider_failed: bool = False,
+    ):
         super().__init__(message)
         self.attempts = attempts
         self.errors = errors or []
+        # True when no provider answered at all (down, revoked key), not when answers kept
+        # failing our checks: callers treat the two differently.
+        self.provider_failed = provider_failed
 
 
 def load_prompt(name: str, version: str = "v1") -> str:
@@ -289,7 +299,9 @@ class LLM:
             self._record(
                 run_id, purpose, before, self._calls() - calls_before, "failed", [str(exc)]
             )
-            raise LLMFailed(f"{purpose}: provider failed ({type(exc).__name__})") from exc
+            raise LLMFailed(
+                f"{purpose}: provider failed ({type(exc).__name__})", provider_failed=True
+            ) from exc
         self._record(
             run_id, purpose, before, self._calls() - calls_before, "ok", [], response.provider
         )

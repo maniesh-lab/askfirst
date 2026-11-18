@@ -633,6 +633,33 @@ async def test_llm_down_keeps_the_window_and_fails_the_run(tmp_path: Path) -> No
     assert out.values.get("log_issue") is None  # the window was not saved: nothing is skipped
 
 
+async def test_an_issue_too_short_to_classify_does_not_hold_the_window(tmp_path: Path) -> None:
+    from datetime import timedelta
+
+    from app.triage.github import FakeGitHub
+    from app.triage.sandbox import as_github
+
+    first = {"number": 1, "title": "Add dark mode to the settings page", "body": "Would be nice."}
+    gh = FakeGitHub(as_github([{**first, "age_days": 1, "labels": []}], NOW))
+    starts = []
+    for day in range(3):
+        now = NOW + timedelta(days=day)
+        if day == 1:  # a stranger opens a two-letter issue: no answer can quote it
+            tiny = {"number": 50, "title": "ok", "body": "", "age_days": 0, "labels": []}
+            gh.issues[50] = as_github([tiny], now)[0]
+        clock = lambda n=now: n  # noqa: E731
+        async with open_triage_runner(
+            settings(tmp_path), github=gh, notifier=FakeNotifier(), durable=False, now=clock
+        ) as runner:
+            _, out = await runner.start("o/r")
+        starts.append(out.values["window_start"])
+        if day == 1:
+            # The provider answered; only our checks failed. Not "LLM down": list it and move on.
+            assert out.status == "done" and not out.values["llm_down"], out.values.get("outcome")
+            assert out.values["unclassified"] == [50] and out.values["digest"]["unclassified"]
+    assert len(set(starts)) == 3  # the window moved forward every day
+
+
 async def test_a_partly_posted_digest_is_not_posted(tmp_path: Path) -> None:
     gh = sandbox_github()
     notifier = FlakyNotifier(fail=1)  # the first message (headline, urgent issues) is lost

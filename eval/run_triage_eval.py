@@ -71,7 +71,7 @@ async def triage_once(llm, max_attempts: int = 3) -> tuple[list[TriageResult], l
     }
     todo = [i for i in issues if not rules[i.number].skip]
     cands = {i.number: candidates(i, issues) for i in issues}
-    llm_results, failed = await classify_all(llm, todo, cands, rubric, max_attempts=max_attempts)
+    llm_results, failed, _ = await classify_all(llm, todo, cands, rubric, max_attempts=max_attempts)
     merged = [merge(i, rules[i.number], llm_results.get(i.number), rubric) for i in issues]
     return merged, failed
 

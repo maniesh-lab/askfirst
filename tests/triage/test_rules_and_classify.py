@@ -79,7 +79,7 @@ async def test_invalid_label_and_bad_duplicate_are_retried() -> None:
         replies=[llm_reply(labels=["wontfix"]), llm_reply(duplicate_of=99), llm_reply()]
     )
     llm = make_llm(Settings(_env_file=None), provider=provider)
-    results, failed = await classify_all(llm, [one], {1: []}, RUBRIC)
+    results, failed, _ = await classify_all(llm, [one], {1: []}, RUBRIC)
     assert failed == [] and results[1].category == "bug"
     assert "not allowed" in provider.calls[1][-1]["content"]
     assert "not in its candidates" in provider.calls[2][-1]["content"]
@@ -91,7 +91,7 @@ async def test_missing_must_be_steps_expected_or_actual() -> None:
     provider = FakeProvider(
         replies=[llm_reply(needs_info=True, missing=["logs"]), llm_reply(missing=["steps"])]
     )
-    results, failed = await classify_all(
+    results, failed, _ = await classify_all(
         make_llm(Settings(_env_file=None), provider=provider), [one], {1: []}, RUBRIC
     )
     assert failed == [] and results[1].missing == ["steps"]
@@ -106,7 +106,7 @@ async def test_rationale_must_quote_the_issue() -> None:
     provider = FakeProvider(
         replies=[llm_reply(rationale='It says "something else entirely".'), llm_reply()]
     )
-    results, _ = await classify_all(
+    results, *_ = await classify_all(
         make_llm(Settings(_env_file=None), provider=provider), [one], {1: []}, RUBRIC
     )
     assert "quote an exact phrase" in provider.calls[1][-1]["content"] and 1 in results
@@ -124,7 +124,7 @@ async def test_failing_batch_splits_then_marks_unclassified() -> None:
     # Batch of two fails 3 times (wrong numbers), issue 1 alone fails 3 times, issue 2 alone works.
     replies = [llm_reply()] * 3 + [llm_reply(number=7)] * 3 + [good_two]
     provider = FakeProvider(replies=replies)
-    results, failed = await classify_all(
+    results, failed, _ = await classify_all(
         make_llm(Settings(_env_file=None), provider=provider), issues, {}, RUBRIC
     )
     assert failed == [1] and list(results) == [2]

@@ -302,13 +302,18 @@ async def duplicates(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
 async def classify(state: TriageState, ctx: TriageContext) -> dict[str, Any]:
     todo = [i for i in issues_of(state) if not state["rules"][str(i.number)]["skip"]]
     cands = {int(k): [(int(n), float(s)) for n, s in v] for k, v in state["candidates"].items()}
-    results, failed = await classify_all(ctx.llm, todo, cands, ctx.rubric, run_id=state["run_id"])
+    results, failed, provider_failed = await classify_all(
+        ctx.llm, todo, cands, ctx.rubric, run_id=state["run_id"]
+    )
     return {
         "llm": {str(k): v.model_dump() for k, v in results.items()},
         "unclassified": failed,
-        # Not one issue classified (a revoked key, the provider down): the digest still goes out
-        # (the rules' escalations matter), but the window is not saved and the run exits 1.
-        "llm_down": bool(todo) and not results,
+        # Not one issue classified because no provider answered (a revoked key, the provider
+        # down): the digest still goes out (the rules' escalations matter), but the window is
+        # not saved and the run exits 1. Answers that only failed our checks (an issue too short
+        # to quote) don't count: otherwise one stranger's "ok" issue would hold the window still
+        # run after run. Those issues are listed as unclassified and the window moves on.
+        "llm_down": bool(todo) and not results and provider_failed,
     }
 
 
