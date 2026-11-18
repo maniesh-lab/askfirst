@@ -119,7 +119,9 @@ async def best_locator(
     for loc in candidates:
         if await _unique(page, loc):
             return loc
-    return candidates[-1] if candidates else None
+    # Nothing points at exactly one element: guessing could type into the wrong (even a hidden)
+    # field, so the field gets no locator and is left for a person.
+    return None
 
 
 async def detect(

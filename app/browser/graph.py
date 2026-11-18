@@ -42,7 +42,7 @@ from app.browser.fill import (
     verify_all,
 )
 from app.browser.login import login, on_login_page, storage_path
-from app.browser.mapping import Profile, map_step
+from app.browser.mapping import Mapping, Profile, map_step
 from app.browser.review import build_packet, ping_text, write_review_files
 from app.browser.schema import Field, FormStep, dedupe_keys
 from app.browser.session import BrowserSession, FixtureServer, settle
@@ -287,6 +287,12 @@ async def map_fields(state: FormState, ctx: FormContext) -> dict[str, Any]:
     mappings = map_step(
         step, ctx.profile(state["profile_path"]), overrides=overrides, data=state.get("data") or {}
     )
+    for i, (f, m) in enumerate(zip(step.fields, mappings, strict=True)):
+        if f.fillable and f.locator is None and m.status != "needs_human":
+            # No locator points at exactly this field: a person fills it (see best_locator).
+            mappings[i] = Mapping(
+                key=f.key, status="needs_human", reason="no locator finds exactly this field"
+            )
     counts: dict[str, int] = {}
     for m in mappings:
         counts[m.status] = counts.get(m.status, 0) + 1

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.browser.detect import detect
+from app.browser.detect import detect, resolve
 from app.browser.session import BrowserSession, HostNotAllowed
 from app.config import Settings
 from app.runtime.audit import AuditLog
@@ -284,6 +284,57 @@ async def test_common_hiding_tricks_are_never_fillable(settings: Settings) -> No
         assert not by_key[name].fillable, name
     assert [o.value for o in by_key["plan"].options] == ["a", "b"]  # the hidden "pro" isn't offered
     assert [o.text for o in by_key["city"].options] == ["Kathmandu"]
+
+
+MORE_TRICKS = """<!doctype html><html><body style="overflow-x:hidden"><form action="/x">
+<label>Name <input name="name"></label>
+<div style="filter:opacity(0)"><label>Filtered <input name="filtered"></label></div>
+<div style="mask-image:linear-gradient(transparent,transparent)"><label>Masked
+  <input name="masked"></label></div>
+<div style="height:0;contain:paint"><label>Contained <input name="contained"></label></div>
+<label>Right <input name="far_right" style="position:absolute;left:20000px"></label>
+<label>Token <input name="token" value="FAKE-token-value" style="display:none"></label>
+<label>Pass <input type="password" name="pw" value="FAKE-pass-value"></label>
+<div role="group" aria-label="Topics">
+  <div role="checkbox" aria-checked="false" data-value="a" tabindex="0">A</div>
+  <div role="checkbox" aria-checked="false" data-value="b" tabindex="0">B</div>
+  <div role="checkbox" aria-checked="true" data-value="share" style="opacity:0">Share</div></div>
+<button>Send</button></form></body></html>"""
+
+DECOY_FORM = """<!doctype html><html><body>
+<div style="position:absolute;left:-9999px"><form><input name="q"></form>
+  <form><input name="email"></form></div>
+<div><form action="/x"><input name="email" data-main="1">
+  <button>Send</button></form></div></body></html>"""
+
+
+async def test_more_hiding_tricks_values_and_hidden_aria_members(settings: Settings) -> None:
+    """filter:opacity(0), a mask, paint containment and far-right positioning on a page that
+    can't scroll sideways all hide a field; hidden or password values are never kept; a hidden
+    ARIA checkbox is not an option (so filling the group can't untick it)."""
+    async with BrowserSession(settings) as s:
+        page = await s.new_page()
+        await page.set_content(MORE_TRICKS)
+        step = await detect(page, step_index=0)
+    by_key = {f.name or f.key: f for f in step.fields}
+    assert by_key["name"].fillable
+    for name in ("filtered", "masked", "contained", "far_right"):
+        assert not by_key[name].fillable, name
+    assert by_key["token"].value == "" and by_key["pw"].value == ""
+    assert "FAKE-" not in step.model_dump_json()
+    [group] = [f for f in step.fields if f.kind == "aria_checkbox_group"]
+    assert [o.value for o in group.options] == ["a", "b"]
+
+
+async def test_a_locator_never_points_at_a_field_in_another_form(settings: Settings) -> None:
+    async with BrowserSession(settings) as s:
+        page = await s.new_page()
+        await page.set_content(DECOY_FORM)
+        step = await detect(page, step_index=0)
+        [email] = [f for f in step.fields if f.name == "email"]
+        assert email.fillable
+        if email.locator is not None:  # whatever it picked must be the visible field
+            assert await resolve(page, email.locator).get_attribute("data-main") == "1"
 
 
 class _Outside(BaseHTTPRequestHandler):

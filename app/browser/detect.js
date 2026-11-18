@@ -16,6 +16,14 @@
     const parts = m[1].split(/[ ,/]+/).filter(Boolean);
     return parts.length >= 4 ? Number(parts[3].replace("%", "")) / (parts[3].includes("%") ? 100 : 1) : 1;
   };
+  // The smallest opacity() in a CSS filter list (1 when there is none).
+  const filterOpacity = (filter) => {
+    let low = 1;
+    for (const m of (filter || "").matchAll(/opacity\(\s*([\d.]+)(%?)\s*\)/g)) {
+      low = Math.min(low, Number(m[1]) / (m[2] ? 100 : 1));
+    }
+    return low;
+  };
   function visibility(el) {
     const reasons = [];
     if (el.closest("[aria-hidden=true]")) reasons.push("aria-hidden");
@@ -35,17 +43,24 @@
     let positioned = style.position === "absolute" || style.position === "fixed";
     for (let a = el; a && a !== document.documentElement; a = a.parentElement) {
       const s = a === el ? style : getComputedStyle(a);
-      if (Number(s.opacity) < 0.05) { reasons.push("opacity-0"); break; }
+      if (Number(s.opacity) < 0.05 || filterOpacity(s.filter) < 0.05) { reasons.push("opacity-0"); break; }
+      const mask = s.maskImage || s.webkitMaskImage;
+      if (mask && mask !== "none") { reasons.push("masked"); break; }
       if (a === el) continue;
       if (s.clipPath && s.clipPath !== "none") { reasons.push("clipped"); break; }
       if (s.position === "absolute" || s.position === "fixed") positioned = true;
       if (a === document.body) continue;
       const box = a.getBoundingClientRect();
-      if (s.overflowX !== "visible") { left = Math.max(left, box.left); right = Math.min(right, box.right); }
-      if (s.overflowY !== "visible") { top = Math.max(top, box.top); bottom = Math.min(bottom, box.bottom); }
+      // Paint containment clips like overflow:hidden on both axes.
+      const paints = /paint|strict|content/.test(s.contain || "");
+      if (paints || s.overflowX !== "visible") { left = Math.max(left, box.left); right = Math.min(right, box.right); }
+      if (paints || s.overflowY !== "visible") { top = Math.max(top, box.top); bottom = Math.min(bottom, box.bottom); }
     }
     if (right - left < 4 || bottom - top < 4) reasons.push("clipped-by-parent");
-    const docW = Math.max(document.documentElement.scrollWidth, window.innerWidth);
+    // With overflow-x hidden on the page, nobody can scroll sideways to reach a far-right field,
+    // and scrollWidth would include that field itself.
+    const rootClips = [document.documentElement, document.body].some((n) => n && ["hidden", "clip"].includes(getComputedStyle(n).overflowX));
+    const docW = rootClips ? window.innerWidth : Math.max(document.documentElement.scrollWidth, window.innerWidth);
     if (r.right < 0 || r.bottom < 0 || r.left > docW + 50) reasons.push("off-screen");
     if (positioned && r.top + window.scrollY > 10000) reasons.push("off-screen");
     const borderless = ["Top", "Right", "Bottom", "Left"].every((side) => alpha(style[`border${side}Color`]) === 0 || style[`border${side}Width`] === "0px");
@@ -116,14 +131,31 @@
     return f ? forms.indexOf(f) : -1;
   }
 
+  // A selector is kept only if it matches exactly this element: `form:nth-of-type()` counted
+  // sibling forms, not forms in the page, and could land on a hidden field in another form.
   function cssFor(el, forms) {
-    if (el.id) return `#${cssEsc(el.id)}`;
+    const tries = [];
+    if (el.id) tries.push(`#${cssEsc(el.id)}`);
     const tag = el.tagName.toLowerCase();
     const name = el.getAttribute("name");
     const f = el.form || el.closest("form");
-    const scope = f && f.id ? `#${cssEsc(f.id)} ` : f ? `form:nth-of-type(${forms.indexOf(f) + 1}) ` : "";
-    if (name) return `${scope}${tag}[name="${name.replace(/"/g, '\\"')}"]`;
+    if (name) {
+      const byName = `${tag}[name="${name.replace(/"/g, '\\"')}"]`;
+      if (f && f.id) tries.push(`#${cssEsc(f.id)} ${byName}`);
+      tries.push(byName);
+    }
+    for (const css of tries) {
+      try {
+        const found = document.querySelectorAll(css);
+        if (found.length === 1 && found[0] === el) return css;
+      } catch (e) { /* not a valid selector: try the next */ }
+    }
     return null;
+  }
+  // The option selector for a radio or checkbox in a native group.
+  function optionCss(r, forms) {
+    if (r.id) return `#${cssEsc(r.id)}`;
+    return cssFor(r, forms) || cssPath(r);
   }
 
   // A CSS path for elements with no id or name (custom widgets): tag:nth-of-type steps up to
@@ -207,7 +239,7 @@
       if (source === "label-for") [label, source] = labelFor(el.closest("fieldset") || el, { group: true, skipWrap: true });
       base.options = radios.map((r) => ({
         value: r.value, text: labelFor(r)[0], selected: r.checked,
-        css: r.id ? `#${cssEsc(r.id)}` : `${cssFor(r, forms)}[value="${r.value.replace(/"/g, '\\"')}"]`,
+        css: optionCss(r, forms),
       }));
       required = radios.some((r) => r.required) || hasStar(label);
       value = (radios.find((r) => r.checked) || {}).value || "";
@@ -226,7 +258,7 @@
         seenGroups.add(key);
         kind = "checkbox_group";
         [label, source] = labelFor(el, { group: true, skipWrap: true });
-        base.options = group.map((r) => ({ value: r.value, text: labelFor(r)[0], selected: r.checked, css: r.id ? `#${cssEsc(r.id)}` : `${cssFor(r, forms)}[value="${r.value.replace(/"/g, '\\"')}"]` }));
+        base.options = group.map((r) => ({ value: r.value, text: labelFor(r)[0], selected: r.checked, css: optionCss(r, forms) }));
         required = group.some((r) => r.required) || hasStar(label);
         value = group.filter((r) => r.checked).map((r) => r.value);
         vis = group.every((r) => visibility(r).length) ? visibility(el) : [];
@@ -256,7 +288,7 @@
     } else if (role === "radiogroup") {
       kind = "aria_radio";
       [label, source] = labelFor(el);
-      const radios = Array.from(el.querySelectorAll("[role=radio]"));
+      const radios = Array.from(el.querySelectorAll("[role=radio]")).filter((r) => !visibility(r).length);
       base.options = radios.map((r) => ({ value: r.dataset.value || clean(r.textContent), text: clean(r.getAttribute("aria-label") || r.textContent), selected: r.getAttribute("aria-checked") === "true" }));
       required = el.getAttribute("aria-required") === "true" || hasStar(label);
       value = (base.options.find((o) => o.selected) || {}).value || "";
@@ -273,7 +305,7 @@
         seenGroups.add(group);
         kind = "aria_checkbox_group";
         [label, source] = labelFor(group);
-        const boxes = Array.from(group.querySelectorAll("[role=checkbox]"));
+        const boxes = Array.from(group.querySelectorAll("[role=checkbox]")).filter((b) => !visibility(b).length);
         base.options = boxes.map((b) => ({ value: b.dataset.value || clean(b.textContent), text: clean(b.getAttribute("aria-label") || b.textContent), selected: b.getAttribute("aria-checked") === "true" }));
         required = group.getAttribute("aria-required") === "true" || hasStar(label);
         value = base.options.filter((o) => o.selected).map((o) => o.value);
@@ -300,6 +332,10 @@
     const hiddenish = vis.length > 0;
     const sneaky = base.tabindex === "-1" || base.autocomplete === "off" || /honey|hp[_-]|website|url2|leave.*blank|bot/i.test(`${base.name} ${base.id}`);
     const honeypot = hiddenish && (sneaky || vis.includes("off-screen") || vis.includes("aria-hidden")) && !vis.includes("hidden-attr");
+
+    // These values are saved with the run (checkpoint, detect output): a password, a hidden
+    // token or a read-only key must not be. Nobody fills those fields anyway.
+    if (type === "password" || hiddenish || el.readOnly) value = Array.isArray(value) ? [] : typeof value === "boolean" ? value : "";
 
     if (!base.css) base.css = target.id ? `#${cssEsc(target.id)}` : cssPath(target);
     const rect = target.getBoundingClientRect();
