@@ -71,3 +71,22 @@ def test_reject_and_all_clean(cli_env: Settings, site, capsys, monkeypatch) -> N
     assert cli.main(["review", "show", left]) == 0
     assert "the data row leaves" in capsys.readouterr().out
     assert cli.main(["review", "approve"]) == 2  # no run ids and no --all-clean
+
+
+def test_approve_asks_about_fields_left_for_a_person(cli_env: Settings, site, capsys, monkeypatch):
+    # The contact form's topic list is left for a person: approving would send its first choice.
+    assert cli.main(["fill", "site:practice/contact"]) == 0
+    [run_id] = waiting(cli_env)
+    monkeypatch.setattr("builtins.input", lambda *a: "n")
+    assert cli.main(["review", "approve", run_id]) == 1
+    assert "left for you" in capsys.readouterr().out and site.submissions() == []
+    assert cli.main(["review", "approve", run_id, "--yes"]) == 0
+    assert len(site.submissions()) == 1
+
+
+def test_approve_is_refused_while_required_fields_are_empty(cli_env: Settings, site, capsys):
+    assert cli.main(["fill", "site:practice/survey"]) == 0
+    [run_id] = waiting(cli_env)
+    assert cli.main(["review", "approve", run_id, "--yes"]) == 1
+    assert "required fields nobody filled" in capsys.readouterr().err
+    assert site.submissions() == []

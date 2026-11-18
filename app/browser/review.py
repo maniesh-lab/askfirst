@@ -139,6 +139,16 @@ def is_clean(packet: ReviewPacket) -> bool:
     )
 
 
+def left_for_person(packet: ReviewPacket) -> tuple[list[str], list[str]]:
+    """(required fields still empty, other fields nobody filled). The first block an approval:
+    the site would refuse the form. The second are sent as the page holds them, which for a list
+    is its first choice, a value nobody saw in the review table."""
+    rows = packet.details.get("rows", [])
+    required = [r["key"] for r in rows if "required_missing" in r.get("flags", [])]
+    other = [r["key"] for r in rows if r.get("status") != "filled" and r["key"] not in required]
+    return required, other
+
+
 def write_review_files(paths: RunPaths, packet: ReviewPacket) -> None:
     paths.ensure()
     paths.review_json.write_text(packet.model_dump_json(indent=2), encoding="utf-8")

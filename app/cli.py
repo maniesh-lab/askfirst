@@ -219,6 +219,8 @@ def _print_outcome(settings: Settings, run_id: str, outcome) -> None:
         print(f"  outcome: {outcome.values.get('outcome')}")
         if result.get("confirmation_id"):
             print(f"  confirmation: {result['confirmation_id']}")
+        elif result.get("message"):
+            print(f"  site said: {result['message']}")
     elif outcome.error:
         print(f"  error: {outcome.error}")
     run = RunIndex.in_data_dir(settings.data_dir).get(run_id)
@@ -239,6 +241,31 @@ def _exit_code(settings: Settings, run_id: str, outcome) -> int:
     return 1 if run is not None and run.status in bad else 0
 
 
+def _left_ok(run_id: str, packet, *, assume_yes: bool) -> bool:
+    """Before an approval: required fields still empty refuse it; other unfilled fields need a
+    yes, because they go out as the page holds them (a list's first choice nobody picked)."""
+    from app.browser.review import left_for_person
+
+    required, other = left_for_person(packet)
+    if required:
+        print(
+            f"refused: {run_id} has required fields nobody filled ({', '.join(required)}); the "
+            f"site would reject it. Fill them first: review edit {run_id} --set <key>=<value>",
+            file=sys.stderr,
+        )
+        return False
+    if other and not assume_yes:
+        print(
+            f"{len(other)} field(s) were left for you and will be sent as the page holds them "
+            f"(a list sends its first choice): {', '.join(other)}. Submit anyway? [y/N] ",
+            end="",
+        )
+        if input().strip().lower() != "y":
+            print("nothing approved; set them with `review edit`, or approve again")
+            return False
+    return True
+
+
 def _ask_decision(packet) -> object:
     from app.runtime.approval import Decision
 
@@ -248,6 +275,8 @@ def _ask_decision(packet) -> object:
     )
     answer = input().strip().lower()
     if answer == "y":
+        if not _left_ok(packet.run_id, packet, assume_yes=False):
+            return None
         return Decision(choice="approve", reviewer=getpass.getuser(), plan_hash=packet.plan_hash)
     if answer == "r":
         reason = input("reason: ").strip() or "rejected in the terminal"
@@ -380,6 +409,8 @@ async def _decide(
     *,
     expect_hash: str | None = None,
     require_clean: bool = False,
+    approving: bool = False,
+    assume_yes: bool = False,
 ) -> int:
     """Resume a waiting run with a decision. `expect_hash` pins the plan the person saw: if the
     waiting plan's hash doesn't start with it (the run was edited or re-planned since), refuse."""
@@ -400,6 +431,8 @@ async def _decide(
             return 1
         if require_clean and not is_clean(packet):
             print(f"refused: {run_id} is no longer clean; review it by hand", file=sys.stderr)
+            return 1
+        if approving and not _left_ok(run_id, packet, assume_yes=assume_yes):
             return 1
         try:
             outcome = await runner.resume(run_id, make(packet))
@@ -457,7 +490,17 @@ def cmd_review_approve(settings: Settings, args: argparse.Namespace) -> int:
         )
 
     codes = [
-        asyncio.run(_decide(settings, rid, make, expect_hash=pin, require_clean=args.all_clean))
+        asyncio.run(
+            _decide(
+                settings,
+                rid,
+                make,
+                expect_hash=pin,
+                require_clean=args.all_clean,
+                approving=True,
+                assume_yes=args.yes,
+            )
+        )
         for rid, pin in pins.items()
     ]
     return max(codes)
@@ -702,7 +745,11 @@ def build_parser() -> argparse.ArgumentParser:
     appr = rsub.add_parser("approve", help="approve one or more runs (they submit now)")
     appr.add_argument("run_ids", nargs="*")
     appr.add_argument("--all-clean", action="store_true", help="every form run with zero flags")
-    appr.add_argument("--yes", action="store_true", help="skip the y/N question for --all-clean")
+    appr.add_argument(
+        "--yes",
+        action="store_true",
+        help="skip the y/N questions (--all-clean, fields left for you)",
+    )
     appr.add_argument(
         "--plan-hash",
         help="the plan hash (or its start) shown by `review show`; refuses if it changed",
