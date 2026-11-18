@@ -97,8 +97,9 @@ What the live numbers say:
 ## In CI
 
 `tests/eval/test_offline_thresholds.py` and `tests/browser/test_detection_eval.py` run the
-offline evals on every push and fail if any number drops below the floors above (the safety
-rows must stay at 100%).
+offline evals on every push and fail if a number falls below its floor. The floors are set a
+little under the results above (for example category accuracy 0.80, label F1 0.70), and the
+safety rows must stay at 100%.
 
 Live runs are not in CI: they cost API calls and their numbers move a little from run to run.
 With the fake model, `--live` stops with an error.

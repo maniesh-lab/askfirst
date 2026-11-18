@@ -16,6 +16,7 @@ This is the local part of the final check. The live parts are all done now; see 
 | Docker + compose, the whole loop | `./scripts/compose_smoke.sh` | **passed** in 25 s (images cached; see below) |
 | Re-run, 2026-11-13 (after the live steps and the redirect fix) | `pytest` | **225 passed** in 66 s, coverage **92%** of `app/` |
 | Re-run, 2026-11-14 (after the final review and security fixes) | `pytest`, `./scripts/compose_smoke.sh`, actionlint | **282 passed** in 78 s, coverage **93%** of `app/`; compose loop passed; actionlint clean |
+| Re-run, 2026-11-18 (after the end-to-end check's fixes) | `pytest`, `./scripts/compose_smoke.sh`, actionlint | **290 passed**, coverage **92%** of `app/`; compose loop passed; actionlint clean |
 | CI on GitHub | the CI workflow on that day's pushes and earlier ones | green (lint, unit, browser, docker) |
 
 What the compose run proves (the real-form proof in miniature, on our practice site in Docker):

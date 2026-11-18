@@ -130,8 +130,8 @@ provider, which answers from keyword rules and is a floor, not a claim.
 The pages and issues were written for this project and the expected answers checked by hand, so
 these numbers show the agent does what it was built to do on known cases; they are not a
 benchmark of websites or repos it has never seen. The samples are small (2 security issues, 2
-duplicates). CI runs the offline evals on every push and fails if any number drops, and the
-safety rows must stay at 100%.
+duplicates). CI runs the offline evals on every push and fails if a number falls below its
+floor (set a little under today's result), and the safety rows must stay at 100%.
 
 **Speed** ([docs/results/run-timings.md](docs/results/run-timings.md)): on Groq, a form takes 8 s
 from start to the review gate and under a second from approval to submitted (no LLM call: it
@@ -157,6 +157,10 @@ http://127.0.0.1:8800/submissions is empty. Then:
 docker compose run --rm agent review show <run_id>      # every value, its source, the flags
 docker compose run --rm agent review approve <run_id>   # replays the plan and submits once
 ```
+
+The full report (`/app/data/runs/<run_id>/review.html`) lives in the `agent-data` volume, not on
+your disk. Copy it out with
+`docker compose run --rm --entrypoint cat agent /app/data/runs/<run_id>/review.html > review.html`.
 
 Refresh the submissions page: exactly one row. The agent container can only reach the practice
 site (`ALLOWED_HOSTS=practice-site`). To have a real model draft the answers, put
@@ -186,7 +190,8 @@ python -m app.cli review approve <run_id> --plan-hash <hash from review show>
 ```
 
 Try the triage bot read-only on the public sandbox repo (fake LLM, no token, nothing written or
-posted):
+posted; it does read the repo's issues from GitHub's API). Fully offline, the triage eval runs the
+same code on the saved sandbox issues: `python -m eval.run_triage_eval`.
 
 ```bash
 python -m app.cli triage run --repo maniesh-lab/askfirst-sandbox --dry-run
@@ -203,9 +208,10 @@ python -m app.cli triage run --repo maniesh-lab/askfirst-sandbox --dry-run
    timer: weekdays at 02:23 UTC.
 
 It starts in `propose` mode: the only thing it writes on GitHub is one comment per run on its own
-log issue. Set `mode` to `apply-labels` to let it add labels too. Comments and closing issues stay
-proposals in every mode. If a secret is missing, the first step fails and names it; a failed run
-posts "Triage run failed" with a link to Discord.
+log issue. A run started by hand can pick `apply-labels` in the Run workflow form to add labels too;
+the timer always runs in `propose` mode unless you edit the `TRIAGE_MODE` line in `triage.yml`.
+Comments and closing issues stay proposals in every mode. If a secret is missing, the first step
+fails and names it; a failed run posts "Triage run failed" with a link to Discord.
 
 ## CLI
 
@@ -225,6 +231,15 @@ All commands are `python -m app.cli <command>`; `--help` on any of them lists ev
 | `runs continue <run_id>` | Carry on a run that stopped mid-way (a run killed after its click ends as "check the site", never a second click) |
 | `audit <run_id>` | The run's full timeline: who or which step did what |
 | `triage run` | Triage a repo. `--since 7d`, `--dry-run`, `--read-only`, `--unattended` (cron mode, the default) or `--interactive` (proposals wait for `review approve`), `--mode propose\|apply-labels`, `--force` (post the digest again), `--output-dir` |
+
+Exit codes, for scripts and cron: **0** the run is done or waiting for review (or was rejected);
+**1** it failed, needs a person to check the site, the input was bad, or `review approve` refused
+(the plan changed, the run is no longer waiting, required fields are empty, or you answered no);
+**2** the command never started (a host not in `ALLOWED_HOSTS`, a bad flag, a missing file, form or
+run, or a triage run that would write with no webhook).
+
+`detect` and `plan` don't log in, so on a form behind a login (the practice marketplace) they show
+the login page; `fill` logs in first.
 
 ## Safety and ethics
 
@@ -254,7 +269,7 @@ All commands are `python -m app.cli <command>`; `--help` on any of them lists ev
 ## Tests and CI
 
 ```bash
-pytest                    # 282 tests, about a minute and a half: fake LLM, mocked GitHub and Discord, no network
+pytest                    # 290 tests (1 skipped without the openai extra), about 1.5 min, no network
 pytest --run-live         # also runs tests marked `live` (none yet; live checks are the --live evals)
 ruff check . && ruff format --check .
 ./scripts/compose_smoke.sh   # the whole fill, wait, approve, submit-once loop in Docker
@@ -264,7 +279,7 @@ Browser tests run real headless Chromium against the practice site and saved HTM
 cover the crash cases: a restart while waiting, the page changing between review and submit, a
 crash right after the click (never a second click), and a second approval racing the first
 (it loses the claim and never clicks).
-Coverage is 93% of `app/` on a local run (2026-11-14,
+Coverage is 92% of `app/` on a local run (2026-11-18,
 [final-check.md](docs/results/final-check.md)); the Codecov badge shows CI's merged figure.
 
 CI runs four jobs on every push to `main` and every pull request: **lint** (ruff, format, and actionlint for the
