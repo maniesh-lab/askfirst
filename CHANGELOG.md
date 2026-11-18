@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.0.3 (2026-11-18)
+
+### Fixed
+
+- File uploads reached the site empty after approval (since the redirect check in 1.0.0): the
+  approved submit was re-sent with `route.fetch()`, which drops the file parts of a multipart
+  body. The tests now check the uploaded size.
+- `review approve` refuses while required fields are empty (it used to click and get a 422), and
+  asks y/N before sending fields nobody filled (a list would send its first choice).
+
+### Security
+
+- Honeypots hidden with `filter:opacity(0)`, a mask, paint containment or far-right positioning
+  on a page that can't scroll sideways counted as visible; hidden ARIA radios and checkboxes were
+  offered as options (filling a group could untick a hidden box).
+- A CSS locator could point at a hidden field in another form (`form:nth-of-type` counted sibling
+  forms) and the read-back still passed. A locator must now match exactly the detected field;
+  otherwise the field is left for a person.
+- Password values and the values of hidden or read-only fields are no longer kept in the saved
+  run state.
+- Approvals are tied to the full requested address, query included; a page redirected on the
+  same host is no longer refused after approval. A run that is submitting or submitted can't be
+  marked waiting again by a slow second approval.
+- Triage: `runs continue` posted again a write that had ended "maybe applied"; escalated
+  (security) issues no longer get `needs-info`, `stale` or `possible-duplicate`; one issue too
+  short to classify no longer holds the window still run after run.
+- The saved login cookie is readable by its owner only.
+
+### Changed
+
+- `review show` lists triage proposal ids; an unknown `--set drop=` id prints a warning;
+  `runs show` with an unknown id exits 2; more `--help` text; the README documents exit codes,
+  the offline triage path and how to copy `review.html` out of the Docker volume.
+
 ## 1.0.2 (2026-11-14)
 
 ### Security
