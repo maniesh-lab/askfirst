@@ -390,3 +390,16 @@ async def test_approval_is_tied_to_the_reviewed_address(
             assert other.submissions() == []
     assert done.status == "failed" and "address changed since review" in done.error
     assert site.submissions() == []
+
+
+async def test_approval_is_tied_to_the_query_too(settings: Settings, site) -> None:
+    """Same host and path, another record (`?id=6` instead of `?id=5`): not what was reviewed."""
+    async with open_form_runner(settings, durable=False) as runner:
+        run_id, out = await runner.start(f"{site.base}/jobs/apply?ref=5", PROFILE)
+        assert out.status == "waiting", out.error
+        runner.context.target = lambda t, real=runner.context.target: real(
+            t.replace("ref=5", "ref=6")
+        )
+        done = await runner.resume(run_id, approve(out.packet))
+    assert done.status == "failed" and "address changed since review" in done.error
+    assert site.submissions() == []

@@ -154,6 +154,24 @@ class RunIndex:
                     (status.value, title, now, run_id),
                 )
 
+    def reopen_for_review(self, run_id: str, title: str) -> bool:
+        """Mark a run as waiting for review, unless a submit has already started or finished:
+        a slow, stale branch must never make a submitted run claimable again. Atomic."""
+        final = (RunStatus.SUBMITTING, RunStatus.DONE, RunStatus.NEEDS_HUMAN_CHECK)
+        with self._connect() as conn:
+            changed = conn.execute(
+                "UPDATE runs SET status = ?, title = ?, updated_at = ? "
+                "WHERE id = ? AND status NOT IN (?, ?, ?)",
+                (
+                    RunStatus.WAITING_REVIEW.value,
+                    title,
+                    utc_now().isoformat(),
+                    run_id,
+                    *(s.value for s in final),
+                ),
+            ).rowcount
+        return changed == 1
+
     def claim(self, run_id: str, expected: RunStatus, new: RunStatus) -> bool:
         """Move a run from `expected` to `new` only if it is still `expected` (compare-and-set).
         Two processes approving the same run at once: exactly one gets True."""

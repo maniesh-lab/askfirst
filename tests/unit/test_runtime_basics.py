@@ -48,6 +48,14 @@ def test_run_index_create_update_list(tmp_path: Path) -> None:
     # Compare-and-set: only the first claim wins.
     assert index.claim(run.id, RunStatus.WAITING_REVIEW, RunStatus.SUBMITTING)
     assert not index.claim(run.id, RunStatus.WAITING_REVIEW, RunStatus.SUBMITTING)
+    # A slow, stale branch can't make a submitting (or submitted) run claimable again.
+    assert not index.reopen_for_review(run.id, "Job form")
+    index.set_status(run.id, RunStatus.DONE)
+    assert not index.reopen_for_review(run.id, "Job form")
+    assert index.get(run.id).status is RunStatus.DONE
+    index.set_status(run.id, RunStatus.RUNNING)
+    assert index.reopen_for_review(run.id, "Job form, step 2")
+    assert index.get(run.id).status is RunStatus.WAITING_REVIEW
 
 
 def test_audit_is_append_only_and_redacts(tmp_path: Path) -> None:

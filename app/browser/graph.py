@@ -365,7 +365,11 @@ async def fill_fields(state: FormState, ctx: FormContext) -> dict[str, Any]:
             error=r.error,
         )
     shot = await _screenshot(page, _paths(ctx, state), f"step-{step.index + 1}")
-    plan = FillPlan.model_validate(state["plan"]) if state.get("plan") else FillPlan(url=step.url)
+    plan = (
+        FillPlan.model_validate(state["plan"])
+        if state.get("plan")
+        else FillPlan(url=step.url, target_url=ctx.target(state["target"]).url)
+    )
     plan.steps = [s for s in plan.steps if s.step_index != step.index] + steps
     plan.schema_hashes = [*plan.schema_hashes[: step.index], step.schema_hash]
     return {
@@ -480,7 +484,9 @@ async def mark_waiting(state: FormState, ctx: FormContext) -> dict[str, Any]:
     plan_hash = state["plan"]["plan_hash"]
     if state.get("waiting_marked_for") != plan_hash:
         packet = build_packet(state)
-        ctx.index.set_status(state["run_id"], RunStatus.WAITING_REVIEW, title=packet.title[:120])
+        if not ctx.index.reopen_for_review(state["run_id"], packet.title[:120]):
+            # Another approval already submitted (or is submitting) this run.
+            raise RuntimeError("this run was already submitted by another approval")
         ctx.audit.record(
             state["run_id"],
             "agent:mark_waiting",
@@ -570,11 +576,16 @@ async def prepare_submit(state: FormState, ctx: FormContext) -> dict[str, Any]:
     _record_decision(state, ctx)
     target = ctx.target(state["target"])
     plan = FillPlan.model_validate(state["plan"])
-    if urlsplit(target.url)[:3] != urlsplit(plan.url)[:3]:
+    if plan.target_url:
+        moved = target.url != plan.target_url  # the full address, query included
+    else:  # a plan made before target_url existed
+        moved = urlsplit(target.url)[:3] != urlsplit(plan.url)[:3]
+    if moved:
         # The settings or site profile now point somewhere else (another PRACTICE_BASE_URL, an
         # edited YAML). The approval was for the page that was reviewed, not this one.
         raise RuntimeError(
-            f"the form's address changed since review ({plan.url} -> {target.url}); "
+            f"the form's address changed since review ({plan.target_url or plan.url} -> "
+            f"{target.url}); "
             "nothing was submitted: start a new run"
         )
     session, page = await ctx.browser.open(ctx, state["run_id"], storage_path(ctx.settings, target))

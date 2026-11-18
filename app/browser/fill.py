@@ -65,7 +65,10 @@ class FinalButton(BaseModel):
 
 
 class FillPlan(BaseModel):
-    url: str
+    url: str  # where the page landed
+    # The address that was asked for (the site profile's URL or the raw target), query included.
+    # Approval is tied to it: a changed setting or profile must not replay this plan elsewhere.
+    target_url: str = ""
     steps: list[FillStep] = PField(default_factory=list)
     # Text of the "next" buttons clicked after each step, in order.
     next_buttons: list[str] = PField(default_factory=list)
@@ -88,6 +91,7 @@ class FillPlan(BaseModel):
                 "next": self.next_buttons,
                 "final": self.final_button.text if self.final_button else None,
                 "profile": self.profile_version,
+                "target": self.target_url,
             }
         )
 
