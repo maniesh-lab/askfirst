@@ -190,6 +190,27 @@ def test_llm_security_is_escalated_at_p0_without_public_asks() -> None:
     assert [a.kind for a in plan_actions([merged], {5: []})] == ["add_labels"]
 
 
+def test_escalated_issues_never_get_needs_info_stale_or_duplicate_labels() -> None:
+    # The rules flag a bug report as missing steps and as stale; only the model sees security.
+    old_bug = issue(6, "Export crashes and leaks other users' rows", "it broke", age_days=45)
+    rules = apply_rules(old_bug, RUBRIC, NOW)
+    assert rules.needs_info and rules.stale and not rules.escalate
+    llm = IssueClass(
+        number=6,
+        category="security",
+        priority="P1",
+        labels=[],
+        needs_info=False,
+        missing=[],
+        duplicate_of=None,
+        summary="s",
+        rationale='"leaks other users\' rows"',
+    )
+    merged = merge(old_bug, rules, llm, RUBRIC)
+    assert merged.escalate
+    assert not {"needs-info", "stale", "possible-duplicate"} & set(merged.labels)
+
+
 def test_rules_read_code_blocks_and_long_bodies() -> None:
     in_code = issue(
         6, "Dependency report", "Scanner says:\n```\nrequests remote code execution\n```"

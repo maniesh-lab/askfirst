@@ -238,6 +238,11 @@ def merge(
     duplicate_of = llm.duplicate_of if llm else None
     if duplicate_of:
         labels.add("possible-duplicate")
+    if escalate:
+        # The rules may have added these before the model spotted security. On a security report
+        # "needs-info" is a public nudge, and "stale" or "possible-duplicate" can lead a stale-bot
+        # or a hurried person to close it: a person decides those.
+        labels -= {"needs-info", "stale", "possible-duplicate"}
     if audit and run_id:
         for change in overrides:
             audit.record(run_id, "agent:merge", "override", issue=issue.number, change=change)
