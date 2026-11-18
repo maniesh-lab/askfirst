@@ -1,6 +1,6 @@
 """The browser session: Chromium with a host allowlist and a network guard.
 
-Three layers keep the agent from doing anything it shouldn't:
+Four layers keep the agent from doing anything it shouldn't:
 
 1. **Host allowlist.** `goto()` refuses a URL whose host isn't in `ALLOWED_HOSTS`, and a
    context-wide route handler aborts every request (pages, scripts, images, XHR) to any other
@@ -9,11 +9,14 @@ Three layers keep the agent from doing anything it shouldn't:
    redirect chain, so page loads are fetched here with redirects turned off and every hop of
    the chain is checked before the browser may follow it; `goto()` also checks where the
    page ended up.
-2. **Network guard.** Every POST, PUT, PATCH and DELETE is aborted, so an accidental Enter key
+2. **Dead proxy.** Chromium sends every host that isn't on the allowlist to a proxy that doesn't
+   exist (`DEAD_PROXY`), and WebRTC is off. This catches what the route handler never sees, such
+   as redirect hops of images and scripts.
+3. **Network guard.** Every method except GET and HEAD is aborted, so an accidental Enter key
    can't submit the form. The only exceptions are added one at a time with
    `guard.allow_write(method, url)`: the login step's one login request, and the approved
    submit step's one form request. `guard.stage` is recorded with each block for the audit.
-3. **Submit blocker.** An init script runs in every page before its own scripts. It cancels
+4. **Submit blocker.** An init script runs in every page before its own scripts. It cancels
    `submit` events and turns `form.submit()` / `form.requestSubmit()` into no-ops, unless the
    approved submit step has switched them back on for this page.
 
@@ -49,7 +52,6 @@ from app.runtime.audit import AuditLog
 
 log = structlog.get_logger(__name__)
 
-WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 # Everything else counts as a write: an allowlist, so PURGE, PROPPATCH or any made-up method a
 # page script sends during filling is blocked too, not only the four usual ones.
 SAFE_METHODS = {"GET", "HEAD"}
@@ -265,9 +267,12 @@ class BrowserSession:
             return
         if self.fixture_server is not None and await self.fixture_server(route, request):
             return
-        if request.is_navigation_request():
+        if request.is_navigation_request() and method in SAFE_METHODS:
             await self._load_checking_redirects(route, url)
             return
+        # The one allowed write (the login or the approved submit) goes straight through:
+        # route.fetch() would resend it without the file parts of a multipart body, so every
+        # upload would reach the site empty. Its redirect hops still meet the dead proxy.
         await route.continue_()
 
     async def _load_checking_redirects(self, route: Route, url: str) -> None:

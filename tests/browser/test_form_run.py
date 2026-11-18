@@ -46,7 +46,10 @@ async def test_job_form_waits_then_submits_exactly_once(settings: Settings, site
     data = row["data"]
     assert data["full_name"] == "Riya Testwell" and data["location"] == "Lalitpur"
     assert data["work_authorization"] == "yes" and data["consent"] == "yes"
-    assert data["resume"][0]["name"] == "resume.pdf"
+    # The file itself must arrive, not just its name (route.fetch() once dropped the bytes).
+    assert data["resume"] == [
+        {"name": "resume.pdf", "size": Path("profiles/files/resume.pdf").stat().st_size}
+    ]
     assert 0 < len(data["why_role"]) <= 500
     result = json.loads(paths.result.read_text())
     assert result["confirmation_id"].startswith("JOB-")
@@ -297,7 +300,9 @@ async def test_marketplace_login_three_steps_stops_before_publish(settings: Sett
     assert done.status == "done"
     [row] = site.submissions()
     assert row["form"] == "listing" and row["data"]["title"] == "Practice desk lamp"
-    assert row["data"]["photos"][0]["name"] == "product.png"
+    assert row["data"]["photos"] == [
+        {"name": "product.png", "size": Path("profiles/files/product.png").stat().st_size}
+    ]
     events = AuditLog(settings.data_dir).read(run_id)
     assert any(e.action == "login" and e.outcome == "ok" for e in events)
     assert "practice-only-pass" not in AuditLog(settings.data_dir).path(run_id).read_text()
