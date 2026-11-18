@@ -385,6 +385,39 @@ async def test_runs_continue_after_a_crash_never_repeats_a_write(tmp_path: Path,
     assert not [a for a in done.values["digest"]["failed"] if a["id"] == "comment-3"]
 
 
+async def test_runs_continue_never_retries_a_write_that_ended_unsure(tmp_path: Path) -> None:
+    from app.triage.github import GitHubError
+
+    class LostAnswer(type(sandbox_github())):
+        calls = 0
+
+        async def create_comment(self, repo, number, body):
+            self.calls += 1
+            if self.calls == 1:
+                await super().create_comment(repo, number, body)  # it landed...
+                raise GitHubError("GitHub request failed: ReadTimeout")  # ...the answer didn't
+            if self.calls == 2:
+                raise RuntimeError("process died")
+            return await super().create_comment(repo, number, body)
+
+    gh = LostAnswer(sandbox_github().issues.values())
+    async with open_triage_runner(
+        settings(tmp_path), github=gh, notifier=FakeNotifier(), durable=False, now=lambda: NOW
+    ) as runner:
+        run_id, packet = await waiting_run(runner)
+        approve = Decision(choice="approve", reviewer="boss", plan_hash=packet.plan_hash)
+        crashed = await runner.resume(run_id, approve)
+        assert crashed.status == "failed" and "process died" in crashed.error
+        [(_, (landed, *_))] = [w for w in gh.writes if w[0] == "comment"]
+        done = await runner.continue_run(run_id)
+    assert done.status == "done", done.error
+    # The comment whose answer was lost finished as UNSURE: continue must not post it again.
+    assert len([w for w in gh.writes if w[0] == "comment" and w[1][0] == landed]) == 1
+    unsure = {a["issue"] for a in done.values["digest"]["unsure"]}
+    assert landed in unsure
+    assert RunIndex.in_data_dir(tmp_path).get(run_id).status is RunStatus.NEEDS_HUMAN_CHECK
+
+
 async def test_dropping_every_proposal_finishes_the_run(tmp_path: Path) -> None:
     gh = sandbox_github()
     async with open_triage_runner(

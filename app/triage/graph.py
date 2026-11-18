@@ -508,11 +508,13 @@ def after_gate(state: TriageState) -> str:
 
 
 def _earlier_attempts(ctx: TriageContext, run_id: str) -> tuple[set[str], set[str]]:
-    """From the audit log: actions an earlier, crashed try applied, and ones it started but
-    never finished."""
+    """From the audit log: actions an earlier, crashed try applied, and ones that may have
+    landed: started but never finished, or finished as UNSURE (a timeout or a 5xx after GitHub
+    got the request). Only clear refusals are tried again."""
     started: set[str] = set()
     finished: set[str] = set()
     applied: set[str] = set()
+    unsure: set[str] = set()
     for e in ctx.audit.read(run_id):
         action_id = e.detail.get("action_id")
         if e.action == "action_started":
@@ -521,7 +523,9 @@ def _earlier_attempts(ctx: TriageContext, run_id: str) -> tuple[set[str], set[st
             finished.add(action_id)
             if e.outcome == "ok":
                 applied.add(action_id)
-    return applied, started - finished
+            elif e.detail.get("error") == UNSURE:
+                unsure.add(action_id)
+    return applied, (started - finished) | unsure
 
 
 def _log_decision(state: TriageState, ctx: TriageContext) -> Decision:
